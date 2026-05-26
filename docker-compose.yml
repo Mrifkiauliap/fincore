@@ -1,0 +1,117 @@
+version: "3.9"
+
+services:
+  # ─── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: fincore-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fincore
+      POSTGRES_PASSWORD: fincore
+      POSTGRES_DB: fincore_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fincore -d fincore_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: fincore-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── WAHA (WhatsApp HTTP API) ─────────────────────────────────────────────────
+  waha:
+    image: devlikeapro/waha
+    container_name: fincore-waha
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      WHATSAPP_API_KEY: ${WAHA_API_KEY:-changeme}
+      WHATSAPP_HOOK_URL: http://host.docker.internal:3000/webhook/whatsapp
+      WHATSAPP_HOOK_EVENTS: message,session.status
+    volumes:
+      - waha_data:/app/.sessions
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ─── Bull Board (Queue Monitoring) ───────────────────────────────────────────
+  bull-board:
+    image: deadly0/bull-board
+    container_name: fincore-bull-board
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USE_TLS: "false"
+      # Optional: auth
+      # BULL_BOARD_USERNAME: ${BULL_BOARD_USERNAME:-admin}
+      # BULL_BOARD_PASSWORD: ${BULL_BOARD_PASSWORD:-admin}
+    depends_on:
+      - redis
+
+  # ─── API (uncomment for containerized dev) ───────────────────────────────────
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: infrastructure/docker/api.Dockerfile
+  #   container_name: fincore-api
+  #   restart: unless-stopped
+  #   ports:
+  #     - '3000:3000'
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+  # ─── Worker (uncomment for containerized dev) ─────────────────────────────────
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: infrastructure/docker/worker.Dockerfile
+  #   container_name: fincore-worker
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+
+  # ─── Sender (uncomment for containerized dev) ─────────────────────────────────
+  # sender:
+  #   build:
+  #     context: .
+  #     dockerfile: infrastructure/docker/sender.Dockerfile
+  #   container_name: fincore-sender
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  waha_data:

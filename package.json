@@ -1,0 +1,33 @@
+{
+  "name": "fincore",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=@fincore/api",
+    "dev:worker": "turbo run dev --filter=@fincore/worker",
+    "dev:sender": "turbo run dev --filter=@fincore/sender",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "db:generate": "turbo run db:generate --filter=@fincore/db",
+    "db:migrate": "turbo run db:migrate --filter=@fincore/db",
+    "db:studio": "turbo run db:studio --filter=@fincore/db",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "prettier": "^3.2.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
