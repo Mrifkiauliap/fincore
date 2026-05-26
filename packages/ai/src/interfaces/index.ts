@@ -1,4 +1,4 @@
-import type { AiExtractionOutput } from '@fincore/contracts';
+import type { AiExtractionOutput } from "@fincore/contracts";
 
 // ─── AI Provider Interface ────────────────────────────────────────────────────
 export interface IAiProvider {
@@ -8,7 +8,10 @@ export interface IAiProvider {
 
 // ─── Transcription Provider Interface ────────────────────────────────────────
 export interface ITranscriptionProvider {
-  transcribeVoice(audioBuffer: Buffer, mimetype: string): Promise<TranscriptionResult>;
+  transcribeVoice(
+    audioBuffer: Buffer,
+    mimetype: string,
+  ): Promise<TranscriptionResult>;
 }
 
 export interface TranscriptionResult {

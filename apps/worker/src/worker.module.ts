@@ -1,18 +1,18 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { AiExtractionProcessor } from "@/processors/ai-extraction.processor";
+import { IncomingMessageProcessor } from "@/processors/messsage.processor";
+import { ReportProcessor } from "@/processors/report.processor";
+import { Module } from "@nestjs/common";
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '../../.env',
-    }),
-    // TODO: add processors as we build them:
-    // VoiceTranscriptionModule,
-    // ImageOcrModule,
-    // AiExtractionModule,
-    // CategorizationModule,
-    // ReportGenerationModule,
+  imports: [],
+  providers: [
+    IncomingMessageProcessor,
+    AiExtractionProcessor,
+    ReportProcessor,
+    // TODO: add more as we build them:
+    // VoiceTranscriptionProcessor,
+    // ImageOcrProcessor,
+    // CategorizationProcessor,
   ],
 })
 export class WorkerModule {}

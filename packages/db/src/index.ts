@@ -8,7 +8,7 @@ let _db: ReturnType<typeof drizzle>;
 export function getDb() {
   if (!_db) {
     const pool = new Pool({
-      connectionString: getConfig().DATABASE_URL,
+      connectionString: getConfig("DATABASE_URL") as string,
     });
     _db = drizzle(pool, { schema });
   }
@@ -16,4 +16,3 @@ export function getDb() {
 }
 
 export * from "./schema";
-export { schema };

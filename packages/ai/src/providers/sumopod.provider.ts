@@ -1,3 +1,4 @@
+import getConfig from "@fincore/config";
 import {
   AiExtractionOutput,
   AiExtractionOutputSchema,
@@ -9,29 +10,44 @@ import { IAiProvider } from "../interfaces";
 const logger = createLogger("ai:sumopod");
 
 const EXTRACTION_SYSTEM_PROMPT = `
-Kamu adalah sistem ekstraksi transaksi keuangan yang presisi.
+Kamu adalah sistem ekstraksi transaksi keuangan yang presisi untuk aplikasi FinCore.
 
 Tugasmu: Ekstrak data transaksi dari pesan keuangan informal dalam Bahasa Indonesia.
 
 Aturan:
 - Return HANYA JSON, tidak ada teks lain sama sekali
-- Pahami slang keuangan Indonesia: ceban=10000, gopek=500, 12k=12000, 50rb=50000
-- Payment methods: GoPay, OVO, Dana, QRIS, ShopeePay, Transfer, Tunai/Cash
-- Jika tidak ada transaksi dalam pesan, return confidence_score di bawah 0.3
+- Pahami slang keuangan Indonesia: ceban=10000, gopek=500, 12k=12000, 50rb=50000, 1jt=1000000
+- Jika tidak ada transaksi yang jelas dalam pesan, return confidence_score di bawah 0.3
 - Selalu tentukan type: expense, income, atau transfer
+- fee: biaya admin/transfer (default 0 jika tidak disebutkan)
+- total_amount: amount + fee (selalu hitung dengan benar)
+- to_payment_method: WAJIB diisi untuk type=transfer, null untuk expense/income
+
+Kategori yang tersedia (gunakan slug ini):
+expense: food, transport, shopping, health, entertainment, bills, education, investment_out, personal_care, household, other_expense
+income: salary, freelance, business, investment_in, bonus, gift, selling, other_income
+transfer: transfer_account, topup_ewallet, pay_debt, give_loan, transfer_with_fee
+
+Payment methods yang tersedia:
+Tunai / Cash, GoPay, OVO, Dana, ShopeePay, LinkAja, QRIS,
+Transfer BCA, Transfer BNI, Transfer BRI, Transfer Mandiri, Kartu Kredit, Kartu Debit
 
 Format output JSON:
 {
   "type": "expense|income|transfer",
-  "amount": number,
+  "amount": number (selalu positif),
+  "fee": number (default 0),
+  "total_amount": number (amount + fee),
   "currency": "IDR",
-  "category": "Food|Transport|Shopping|Health|Entertainment|Bills|Education|Investment|Salary|Other",
-  "merchant": "string or null",
-  "location": "string or null",
-  "payment_method": "string or null",
+  "category": "slug dari daftar di atas",
+  "merchant": "string atau null",
+  "location": "string atau null",
+  "payment_method": "nama payment method persis dari daftar di atas, atau null",
+  "to_payment_method": "nama payment method tujuan (untuk transfer) atau null",
+  "fee_note": "keterangan biaya tambahan atau null",
   "source_type": "text|voice|image",
-  "notes": "string or null",
-  "confidence_score": number between 0 and 1
+  "notes": "string atau null",
+  "confidence_score": number antara 0 dan 1
 }
 `.trim();
 
@@ -40,8 +56,12 @@ export class SumopodProvider implements IAiProvider {
   private readonly apiKey: string;
 
   constructor() {
-    this.baseUrl = process.env.SUMOPOD_BASE_URL!;
-    this.apiKey = process.env.SUMOPOD_API_KEY!;
+    const apiKey = getConfig("SUMOPOD_API_KEY") as string;
+    if (!apiKey) {
+      throw new Error("SUMOPOD_API_KEY is not defined");
+    }
+    this.baseUrl = getConfig("SUMOPOD_BASE_URL") as string;
+    this.apiKey = apiKey;
   }
 
   async extractTransaction(content: string): Promise<AiExtractionOutput> {
@@ -51,7 +71,7 @@ export class SumopodProvider implements IAiProvider {
     );
 
     const response = await axios.post(
-      `${this.baseUrl}/v1/chat/completions`,
+      `${this.baseUrl}/chat/completions`,
       {
         model: "gpt-4o-mini", // adjust to Sumopod's model name
         messages: [
@@ -82,7 +102,7 @@ export class SumopodProvider implements IAiProvider {
 
   async generateSummary(data: unknown): Promise<string> {
     const response = await axios.post(
-      `${this.baseUrl}/v1/chat/completions`,
+      `${this.baseUrl}/chat/completions`,
       {
         model: "gpt-4o-mini",
         messages: [

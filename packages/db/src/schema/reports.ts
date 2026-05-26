@@ -1,6 +1,13 @@
-import { index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { reportTypeEnum } from './enums';
-import { users } from './users';
+import {
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { reportTypeEnum } from "./enums";
+import { users } from "./users";
 
 /**
  * Interface untuk struktur data laporan keuangan.
@@ -30,24 +37,30 @@ export interface ReportData {
  * sentAt null berarti laporan belum dikirim ke WhatsApp.
  */
 export const reports = pgTable(
-  'reports',
+  "reports",
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    type: reportTypeEnum('type').notNull(),
-    periodStart: timestamp('period_start').notNull(),
-    periodEnd: timestamp('period_end').notNull(),
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: reportTypeEnum("type").notNull(),
+    periodStart: timestamp("period_start").notNull(),
+    periodEnd: timestamp("period_end").notNull(),
     /** Teks laporan yang dikirim ke WhatsApp */
-    summary: text('summary'),
+    summary: text("summary"),
     /** Raw data laporan: breakdown, totals, dll */
-    data: jsonb('data').$type<ReportData>().notNull(),
+    data: jsonb("data").$type<ReportData>().notNull(),
     /** Waktu laporan dikirim ke WA. Null = belum dikirim */
-    sentAt: timestamp('sent_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    sentAt: timestamp("sent_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (t) => [index('idx_reports_user_id_type_period').on(t.userId, t.type, t.periodStart)],
+  (t) => [
+    index("idx_reports_user_id_type_period").on(
+      t.userId,
+      t.type,
+      t.periodStart,
+    ),
+  ],
 );
 
 export type Report = typeof reports.$inferSelect;

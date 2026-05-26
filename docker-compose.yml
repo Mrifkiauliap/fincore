@@ -20,18 +20,18 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─── Redis ────────────────────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: fincore-redis
+  # ─── Valkey ───────────────────────────────────────────────────────────────────
+  valkey:
+    image: valkey/valkey:8.1.7-alpine
+    container_name: fincore-valkey
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - valkey_data:/data
+    command: valkey-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,14 +60,16 @@ services:
     ports:
       - "3010:3000"
     environment:
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
       REDIS_PORT: 6379
       REDIS_USE_TLS: "false"
+      BULL_VERSION: BULLMQ
+      QUEUE_NAMES: incoming-message;voice-transcription;image-ocr;ai-extraction;categorization;report-generation;wa-sender
       # Optional: auth
       # BULL_BOARD_USERNAME: ${BULL_BOARD_USERNAME:-admin}
       # BULL_BOARD_PASSWORD: ${BULL_BOARD_PASSWORD:-admin}
     depends_on:
-      - redis
+      - valkey
 
   # ─── API (uncomment for containerized dev) ───────────────────────────────────
   # api:
@@ -82,7 +84,7 @@ services:
   #   depends_on:
   #     postgres:
   #       condition: service_healthy
-  #     redis:
+  #     valkey:
   #       condition: service_healthy
 
   # ─── Worker (uncomment for containerized dev) ─────────────────────────────────
@@ -96,7 +98,7 @@ services:
   #   depends_on:
   #     postgres:
   #       condition: service_healthy
-  #     redis:
+  #     valkey:
   #       condition: service_healthy
 
   # ─── Sender (uncomment for containerized dev) ─────────────────────────────────
@@ -108,10 +110,11 @@ services:
   #   restart: unless-stopped
   #   env_file: .env
   #   depends_on:
-  #     redis:
+  #     valkey:
   #       condition: service_healthy
 
 volumes:
+  # postgres_data:
   postgres_data:
-  redis_data:
+  valkey_data:
   waha_data:

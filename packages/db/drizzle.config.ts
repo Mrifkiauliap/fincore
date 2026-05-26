@@ -6,6 +6,6 @@ export default {
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: getConfig().DATABASE_URL,
+    url: getConfig("DATABASE_URL") as string,
   },
 } satisfies Config;

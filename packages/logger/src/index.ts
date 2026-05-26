@@ -1,14 +1,15 @@
-import pino from 'pino';
+import getConfig from "@fincore/config";
+import pino from "pino";
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = getConfig("NODE_ENV") !== "production";
 
 const transport = isDev
   ? {
-      target: 'pino-pretty',
+      target: "pino-pretty",
       options: {
         colorize: true,
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname',
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
       },
     }
   : undefined;
@@ -16,7 +17,7 @@ const transport = isDev
 export function createLogger(service: string) {
   return pino({
     name: service,
-    level: process.env.LOG_LEVEL ?? 'info',
+    level: getConfig("LOG_LEVEL") ?? "info",
     transport,
   });
 }

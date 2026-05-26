@@ -23,6 +23,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@fastify/static':
+        specifier: ^7.0.4
+        version: 7.0.4
+      '@fincore/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@fincore/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -44,18 +50,18 @@ importers:
       '@nestjs/common':
         specifier: ^10.3.0
         version: 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^3.2.0
-        version: 3.3.0(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^10.3.0
         version: 10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/platform-fastify':
         specifier: ^10.3.0
-        version: 10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+        version: 10.4.22(@fastify/static@7.0.4)(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))
       '@nestjs/swagger':
         specifier: ^7.3.0
-        version: 7.4.2(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)
+        version: 7.4.2(@fastify/static@7.0.4)(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)
+      drizzle-orm:
+        specifier: ^0.36.0
+        version: 0.36.4(@types/pg@8.20.0)(pg@8.21.0)
       fastify:
         specifier: ^4.26.0
         version: 4.29.1
@@ -105,9 +111,6 @@ importers:
       '@nestjs/common':
         specifier: ^10.3.0
         version: 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^3.2.0
-        version: 3.3.0(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^10.3.0
         version: 10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -160,15 +163,18 @@ importers:
       '@nestjs/common':
         specifier: ^10.3.0
         version: 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/config':
-        specifier: ^3.2.0
-        version: 3.3.0(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^10.3.0
         version: 10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      axios:
+        specifier: ^1.6.7
+        version: 1.16.1
       bullmq:
         specifier: ^5.4.0
         version: 5.77.3
+      drizzle-orm:
+        specifier: ^0.36.0
+        version: 0.36.4(@types/pg@8.20.0)(pg@8.21.0)
       reflect-metadata:
         specifier: ^0.2.1
         version: 0.2.2
@@ -191,6 +197,9 @@ importers:
 
   packages/ai:
     dependencies:
+      '@fincore/config':
+        specifier: workspace:*
+        version: link:../config
       '@fincore/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -264,7 +273,7 @@ importers:
         specifier: workspace:*
         version: link:../config
       '@fincore/contracts':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../contracts
       '@fincore/shared':
         specifier: workspace:*
@@ -291,6 +300,9 @@ importers:
 
   packages/logger:
     dependencies:
+      '@fincore/config':
+        specifier: workspace:^
+        version: link:../config
       pino:
         specifier: ^9.1.0
         version: 9.14.0
@@ -307,6 +319,9 @@ importers:
 
   packages/queue:
     dependencies:
+      '@fincore/config':
+        specifier: workspace:^
+        version: link:../config
       '@fincore/logger':
         specifier: workspace:*
         version: link:../logger
@@ -661,6 +676,10 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@fastify/accept-negotiator@1.1.0':
+    resolution: {integrity: sha512-OIHZrb2ImZ7XG85HXOONLcJWGosv7sIvM2ifAPQVhg9Lv7qdmMBNVaai4QTdyuaqbKM5eO6sLSQOYI7wEQeCJQ==}
+    engines: {node: '>=14'}
+
   '@fastify/ajv-compiler@3.6.0':
     resolution: {integrity: sha512-LwdXQJjmMD+GwLOkP7TVC68qa+pSSogeWWmznRJ/coyTcfe9qA05AHFSe1eZFwK6q+xVRpChnvFUkf1iYaSZsQ==}
 
@@ -681,6 +700,12 @@ packages:
 
   '@fastify/middie@8.3.3':
     resolution: {integrity: sha512-+WHavMQr9CNTZoy2cjoDxoWp76kZ3JKjAtZj5sXNlxX5XBzHig0TeCPfPc+1+NQmliXtndT3PFwAjrQHE/6wnQ==}
+
+  '@fastify/send@2.1.0':
+    resolution: {integrity: sha512-yNYiY6sDkexoJR0D8IDy3aRP3+L4wdqCpvx5WP+VtEU58sn7USmKynBzDQex5X42Zzvw2gNzzYgP90UfWShLFA==}
+
+  '@fastify/static@7.0.4':
+    resolution: {integrity: sha512-p2uKtaf8BMOZWLs6wu+Ihg7bWNBdjNgCwDza4MJtTqg+5ovKmcbgbR9Xs5/smZ1YISfzKOCNYmZV8LaCj+eJ1Q==}
 
   '@google/generative-ai@0.11.5':
     resolution: {integrity: sha512-DviMgrnljEKh6qkDT2pVFW+NEuVhggqBUoEnyy2PNL7l4ewxXRJubk3PctC9yPl1AdRIlhqP7E076QQt+IWuTg==}
@@ -715,6 +740,10 @@ packages:
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
+    engines: {node: '>=8'}
+
+  '@lukeed/ms@2.0.2':
+    resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
     engines: {node: '>=8'}
 
   '@microsoft/tsdoc@0.15.1':
@@ -782,12 +811,6 @@ packages:
         optional: true
       class-validator:
         optional: true
-
-  '@nestjs/config@3.3.0':
-    resolution: {integrity: sha512-pdGTp8m9d0ZCrjTpjkUbZx6gyf2IKf+7zlkrPNMsJzYZ4bFRRTpXrnj+556/5uiI6AfL5mMrJc2u7dB6bvM+VA==}
-    peerDependencies:
-      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
-      rxjs: ^7.1.0
 
   '@nestjs/core@10.4.22':
     resolution: {integrity: sha512-6IX9+VwjiKtCjx+mXVPncpkQ5ZjKfmssOZPFexmT+6T9H9wZ3svpYACAo7+9e7Nr9DZSoRZw3pffkJP7Z0UjaA==}
@@ -1237,6 +1260,10 @@ packages:
   consola@2.15.3:
     resolution: {integrity: sha512-9vAdYbHj6x2fLKC4+oPH0kFzY/orMZyG2Aj+kNylHxKGJ/Ed4dpNyAQYwJOdqO4zdM7XpVHmyejQDcQHrnuXbw==}
 
+  content-disposition@0.5.4:
+    resolution: {integrity: sha512-FveZTNuGw04cxlAiWbzi6zTAL/lhehaWbTtgluJh4/E95DqMwTmha3KZN1aAWA8cFIhHzMZUvLevkw5Rqk+tSQ==}
+    engines: {node: '>= 0.6'}
+
   cookie@0.7.2:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
@@ -1296,17 +1323,13 @@ packages:
     resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
     engines: {node: '>=0.10'}
 
+  depd@2.0.0:
+    resolution: {integrity: sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==}
+    engines: {node: '>= 0.8'}
+
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
-
-  dotenv-expand@10.0.0:
-    resolution: {integrity: sha512-GopVGCpVS1UKH75VKHGuQFqS1Gusej0z4FyQkPdwjil2gNIv+LNsqBlboOzpJFZKVT95GkCyWJbBSdFEFUWI2A==}
-    engines: {node: '>=12'}
-
-  dotenv@16.4.5:
-    resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
-    engines: {node: '>=12'}
 
   dotenv@17.4.2:
     resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
@@ -1471,6 +1494,9 @@ packages:
   escalade@3.2.0:
     resolution: {integrity: sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==}
     engines: {node: '>=6'}
+
+  escape-html@1.0.3:
+    resolution: {integrity: sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==}
 
   escape-string-regexp@1.0.5:
     resolution: {integrity: sha512-vbRorB5FUQWvla16U8R/qgaFIya2qGzwDrNmCZuYKrbdSUMG6I1ZCGQRefkRVhuOkIGVne7BQ35DSfo1qvJqFg==}
@@ -1679,6 +1705,10 @@ packages:
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
+  http-errors@2.0.0:
+    resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
+    engines: {node: '>= 0.8'}
+
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
@@ -1860,6 +1890,11 @@ packages:
   mime-types@2.1.35:
     resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==}
     engines: {node: '>= 0.6'}
+
+  mime@3.0.0:
+    resolution: {integrity: sha512-jSCU7/VB1loIWBZe14aEYHU/+1UMEHoaO7qxCOVJOw9GgH72VAWppxNcjU+x9a2k3GSIBXNKxXQFqRvvZ7vr3A==}
+    engines: {node: '>=10.0.0'}
+    hasBin: true
 
   mimic-fn@2.1.0:
     resolution: {integrity: sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==}
@@ -2212,6 +2247,9 @@ packages:
     resolution: {integrity: sha512-pgRc4hJ4/sNjWCSS9AmnS40x3bNMDTknHgL5UaMBTMyJnU90EgWh1Rz+MC9eFu4BuN/UwZjKQuY/1v3rM7HMfg==}
     engines: {node: '>= 0.4'}
 
+  setprototypeof@1.2.0:
+    resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
+
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
     engines: {node: '>=8'}
@@ -2247,6 +2285,10 @@ packages:
 
   standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
+
+  statuses@2.0.1:
+    resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
+    engines: {node: '>= 0.8'}
 
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
@@ -2363,6 +2405,10 @@ packages:
   toad-cache@3.7.1:
     resolution: {integrity: sha512-5DXWzE4Vz7xNHsv+xQ+MGfJYyC78Aok3tEr0MNwHoRf7vZnga1mQXZ4/Nsodld4VR6Wd+VhfmqnNrsRJyYPfrQ==}
     engines: {node: '>=20'}
+
+  toidentifier@1.0.1:
+    resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
+    engines: {node: '>=0.6'}
 
   token-types@6.1.2:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
@@ -2698,6 +2744,8 @@ snapshots:
   '@esbuild/win32-x64@0.19.12':
     optional: true
 
+  '@fastify/accept-negotiator@1.1.0': {}
+
   '@fastify/ajv-compiler@3.6.0':
     dependencies:
       ajv: 8.20.0
@@ -2730,6 +2778,23 @@ snapshots:
       fastify-plugin: 4.5.1
       path-to-regexp: 6.3.0
       reusify: 1.1.0
+
+  '@fastify/send@2.1.0':
+    dependencies:
+      '@lukeed/ms': 2.0.2
+      escape-html: 1.0.3
+      fast-decode-uri-component: 1.0.1
+      http-errors: 2.0.0
+      mime: 3.0.0
+
+  '@fastify/static@7.0.4':
+    dependencies:
+      '@fastify/accept-negotiator': 1.1.0
+      '@fastify/send': 2.1.0
+      content-disposition: 0.5.4
+      fastify-plugin: 4.5.1
+      fastq: 1.20.1
+      glob: 10.4.5
 
   '@google/generative-ai@0.11.5': {}
 
@@ -2768,6 +2833,8 @@ snapshots:
       call-bind: 1.0.9
 
   '@lukeed/csprng@1.1.0': {}
+
+  '@lukeed/ms@2.0.2': {}
 
   '@microsoft/tsdoc@0.15.1': {}
 
@@ -2841,14 +2908,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@nestjs/config@3.3.0(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(rxjs@7.8.2)':
-    dependencies:
-      '@nestjs/common': 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      dotenv: 16.4.5
-      dotenv-expand: 10.0.0
-      lodash: 4.17.21
-      rxjs: 7.8.2
-
   '@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
       '@nestjs/common': 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -2868,7 +2927,7 @@ snapshots:
       '@nestjs/common': 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata: 0.2.2
 
-  '@nestjs/platform-fastify@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))':
+  '@nestjs/platform-fastify@10.4.22(@fastify/static@7.0.4)(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))':
     dependencies:
       '@fastify/cors': 9.0.1
       '@fastify/formbody': 7.4.0
@@ -2879,6 +2938,8 @@ snapshots:
       light-my-request: 6.3.0
       path-to-regexp: 3.3.0
       tslib: 2.8.1
+    optionalDependencies:
+      '@fastify/static': 7.0.4
 
   '@nestjs/schematics@10.2.3(chokidar@3.6.0)(typescript@5.7.2)':
     dependencies:
@@ -2891,7 +2952,7 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@nestjs/swagger@7.4.2(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)':
+  '@nestjs/swagger@7.4.2(@fastify/static@7.0.4)(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
       '@nestjs/common': 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -2902,6 +2963,8 @@ snapshots:
       path-to-regexp: 3.3.0
       reflect-metadata: 0.2.2
       swagger-ui-dist: 5.17.14
+    optionalDependencies:
+      '@fastify/static': 7.0.4
 
   '@nestjs/testing@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@10.4.22(@nestjs/common@10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))':
     dependencies:
@@ -3312,6 +3375,10 @@ snapshots:
 
   consola@2.15.3: {}
 
+  content-disposition@0.5.4:
+    dependencies:
+      safe-buffer: 5.2.1
+
   cookie@0.7.2: {}
 
   cookie@1.1.1: {}
@@ -3359,12 +3426,10 @@ snapshots:
 
   denque@2.1.0: {}
 
+  depd@2.0.0: {}
+
   detect-libc@2.1.2:
     optional: true
-
-  dotenv-expand@10.0.0: {}
-
-  dotenv@16.4.5: {}
 
   dotenv@17.4.2: {}
 
@@ -3485,6 +3550,8 @@ snapshots:
       '@esbuild/win32-x64': 0.19.12
 
   escalade@3.2.0: {}
+
+  escape-html@1.0.3: {}
 
   escape-string-regexp@1.0.5: {}
 
@@ -3740,6 +3807,14 @@ snapshots:
 
   help-me@5.0.0: {}
 
+  http-errors@2.0.0:
+    dependencies:
+      depd: 2.0.0
+      inherits: 2.0.4
+      setprototypeof: 1.2.0
+      statuses: 2.0.1
+      toidentifier: 1.0.1
+
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
@@ -3936,6 +4011,8 @@ snapshots:
   mime-types@2.1.35:
     dependencies:
       mime-db: 1.52.0
+
+  mime@3.0.0: {}
 
   mimic-fn@2.1.0: {}
 
@@ -4267,6 +4344,8 @@ snapshots:
       gopd: 1.2.0
       has-property-descriptors: 1.0.2
 
+  setprototypeof@1.2.0: {}
+
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -4293,6 +4372,8 @@ snapshots:
   split2@4.2.0: {}
 
   standard-as-callback@2.1.0: {}
+
+  statuses@2.0.1: {}
 
   string-width@4.2.3:
     dependencies:
@@ -4370,6 +4451,8 @@ snapshots:
       is-number: 7.0.0
 
   toad-cache@3.7.1: {}
+
+  toidentifier@1.0.1: {}
 
   token-types@6.1.2:
     dependencies:

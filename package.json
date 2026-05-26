@@ -14,10 +14,13 @@
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "db:generate": "turbo run db:generate --filter=@fincore/db",
     "db:migrate": "turbo run db:migrate --filter=@fincore/db",
+    "db:push": "turbo run db:push --filter=@fincore/db",
+    "db:reset": "turbo run db:push --filter=@fincore/db && turbo run db:generate --filter=@fincore/db",
     "db:studio": "turbo run db:studio --filter=@fincore/db",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "reset:all": "pnpm run clean && pnpm install && turbo run build"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -10,7 +10,7 @@
 | ----------- | --------------------------- |
 | Backend     | NestJS (TypeScript)         |
 | Monorepo    | Turborepo + pnpm workspaces |
-| Queue       | BullMQ + Redis              |
+| Queue       | BullMQ + Valkey             |
 | Database    | PostgreSQL                  |
 | ORM         | Drizzle ORM                 |
 | Validation  | Zod                         |
@@ -77,7 +77,7 @@ pnpm install
 ### 3. Start Infrastructure
 
 ```bash
-# Start PostgreSQL, Redis, WAHA, Bull Board
+# Start PostgreSQL, Valkey, WAHA, Bull Board
 pnpm docker:up
 
 # Cek status
@@ -122,7 +122,7 @@ pnpm dev:sender
 | Worker      | 3002 | internal only              |
 | Sender      | 3003 | internal only              |
 | PostgreSQL  | 5432 | -                          |
-| Redis       | 6379 | -                          |
+| Valkey      | 6379 | -                          |
 
 ---
 
@@ -133,7 +133,7 @@ Lihat `.env.example` untuk daftar lengkap.
 Wajib diisi:
 
 - `DATABASE_URL`
-- `REDIS_URL`
+- `VALKEY_URL`
 - `WAHA_API_KEY`
 - `SUMOPOD_API_KEY` + `SUMOPOD_BASE_URL`
 - `GROQ_API_KEY` (untuk voice transcription)

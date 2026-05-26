@@ -1,16 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": [
-    "NODE_ENV",
-    "DATABASE_URL",
-    "REDIS_URL"
-  ],
+  "globalEnv": ["NODE_ENV", "DATABASE_URL", "VALKEY_URL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
@@ -31,6 +28,14 @@
     "db:migrate": {
       "cache": false,
       "dependsOn": ["db:generate"]
+    },
+    "db:push": {
+      "cache": false,
+      "dependsOn": ["db:generate"]
+    },
+    "db:reset": {
+      "cache": false,
+      "dependsOn": ["db:push", "db:generate"]
     },
     "db:studio": {
       "cache": false,

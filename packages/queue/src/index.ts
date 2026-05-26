@@ -1,19 +1,23 @@
-import { Queue, Worker, QueueEvents, JobsOptions, WorkerOptions } from 'bullmq';
-import { Redis } from 'ioredis';
-import { createLogger } from '@fincore/logger';
-import { QueueName } from '@fincore/shared';
+import getConfig from "@fincore/config";
+import { createLogger } from "@fincore/logger";
+import { QueueName } from "@fincore/shared";
+import { JobsOptions, Queue } from "bullmq";
+import { Redis } from "ioredis";
 
-const logger = createLogger('queue');
+const logger = createLogger("queue");
 
-// ─── Redis Connection ─────────────────────────────────────────────────────────
-export function createRedisConnection(): Redis {
-  const connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-    maxRetriesPerRequest: null, // required for BullMQ
-    enableReadyCheck: false,
-  });
+// ─── Valkey Connection ────────────────────────────────────────────────────────
+export function createValkeyConnection(): Redis {
+  const connection = new Redis(
+    getConfig("VALKEY_URL") ?? "redis://localhost:6379",
+    {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    },
+  );
 
-  connection.on('connect', () => logger.info('✅ Redis connected'));
-  connection.on('error', (err) => logger.error({ err }, 'Redis error'));
+  connection.on("connect", () => logger.info("✅ Valkey connected"));
+  connection.on("error", (err) => logger.error({ err }, "Valkey error"));
 
   return connection;
 }
@@ -22,7 +26,7 @@ export function createRedisConnection(): Redis {
 export const defaultJobOptions: JobsOptions = {
   attempts: 3,
   backoff: {
-    type: 'exponential',
+    type: "exponential",
     delay: 1000,
   },
   removeOnComplete: { count: 100 },
@@ -34,7 +38,7 @@ const queues = new Map<string, Queue>();
 
 export function getQueue(name: string): Queue {
   if (!queues.has(name)) {
-    const connection = createRedisConnection();
+    const connection = createValkeyConnection();
     const queue = new Queue(name, {
       connection,
       defaultJobOptions,
@@ -57,7 +61,7 @@ export async function enqueue<T>(
     ...defaultJobOptions,
     ...options,
   });
-  logger.info({ jobId: job.id, queueName, jobName }, 'Job enqueued');
+  logger.info({ jobId: job.id, queueName, jobName }, "Job enqueued");
 }
 
 // ─── All Queues (for BullBoard) ───────────────────────────────────────────────
@@ -66,5 +70,5 @@ export function getAllQueues(): Queue[] {
 }
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
-export { Queue, Worker, QueueEvents, WorkerOptions } from 'bullmq';
-export type { JobsOptions, Job } from 'bullmq';
+export { Queue, QueueEvents, Worker, WorkerOptions } from "bullmq";
+export type { Job, JobsOptions } from "bullmq";

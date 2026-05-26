@@ -1,11 +1,15 @@
-import { z } from 'zod';
-import { MessageType, TransactionType, ProcessingStatus } from '@fincore/shared';
+import {
+  MessageType,
+  ProcessingStatus,
+  TransactionType,
+} from "@fincore/shared";
+import { z } from "zod";
 
 // ─── Incoming Message Event ───────────────────────────────────────────────────
 export const IncomingMessageEventSchema = z.object({
   id: z.string(),
   sessionId: z.string(),
-  from: z.string(),           // WhatsApp number
+  from: z.string(), // WhatsApp number
   type: z.nativeEnum(MessageType),
   body: z.string().optional(),
   mediaUrl: z.string().optional(),
@@ -19,7 +23,7 @@ export type IncomingMessageEvent = z.infer<typeof IncomingMessageEventSchema>;
 export const VoiceTranscribedEventSchema = z.object({
   rawMessageId: z.string(),
   transcript: z.string(),
-  language: z.string().default('id'),
+  language: z.string().default("id"),
   durationSeconds: z.number().optional(),
   provider: z.string(),
 });
@@ -40,7 +44,7 @@ export const TransactionExtractedEventSchema = z.object({
   userId: z.string(),
   type: z.nativeEnum(TransactionType),
   amount: z.number(),
-  currency: z.string().default('IDR'),
+  currency: z.string().default("IDR"),
   category: z.string(),
   merchant: z.string().optional(),
   location: z.string().optional(),
@@ -50,13 +54,15 @@ export const TransactionExtractedEventSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
   transactionDate: z.string().optional(), // ISO date string
 });
-export type TransactionExtractedEvent = z.infer<typeof TransactionExtractedEventSchema>;
+export type TransactionExtractedEvent = z.infer<
+  typeof TransactionExtractedEventSchema
+>;
 
 // ─── Send WA Message Job ──────────────────────────────────────────────────────
 export const SendWaMessageJobSchema = z.object({
   to: z.string(),
   message: z.string(),
-  sessionId: z.string().default('default'),
+  sessionId: z.string().default("default"),
   replyToMessageId: z.string().optional(),
 });
 export type SendWaMessageJob = z.infer<typeof SendWaMessageJobSchema>;
@@ -82,30 +88,34 @@ export const AiExtractionOutputSchema = z
      * Jika fee tidak ada, total_amount = amount.
      */
     total_amount: z.number().min(0),
-    currency: z.string().default('IDR'),
+    currency: z.string().default("IDR"),
     category: z.string(),
-    merchant: z.string().optional(),
-    location: z.string().optional(),
-    payment_method: z.string().optional(),
+    merchant: z.string().nullable().optional(),
+    location: z.string().nullable().optional(),
+    payment_method: z.string().nullable().optional(),
     /**
      * Nama metode tujuan untuk transfer (contoh: "Bank Jago", "OVO").
      * Null/undefined untuk expense dan income.
      */
-    to_payment_method: z.string().optional(),
+    to_payment_method: z.string().nullable().optional(),
     /** Keterangan biaya tambahan, contoh: "biaya transfer beda bank". */
-    fee_note: z.string().optional(),
+    fee_note: z.string().nullable().optional(),
     source_type: z.string(),
-    notes: z.string().optional(),
+    notes: z.string().nullable().optional(),
     confidence_score: z.number().min(0).max(1),
   })
   .refine((data) => data.total_amount === data.amount + data.fee, {
-    message: 'total_amount harus sama dengan amount + fee',
-    path: ['total_amount'],
+    message: "total_amount harus sama dengan amount + fee",
+    path: ["total_amount"],
   })
-  .refine((data) => data.type !== TransactionType.TRANSFER || !!data.to_payment_method, {
-    message: 'to_payment_method wajib diisi untuk type transfer',
-    path: ['to_payment_method'],
-  });
+  .refine(
+    (data) =>
+      data.type !== TransactionType.TRANSFER || !!data.to_payment_method,
+    {
+      message: "to_payment_method wajib diisi untuk type transfer",
+      path: ["to_payment_method"],
+    },
+  );
 export type AiExtractionOutput = z.infer<typeof AiExtractionOutputSchema>;
 
 // ─── Processing Status Update ─────────────────────────────────────────────────
@@ -114,4 +124,6 @@ export const ProcessingStatusUpdateSchema = z.object({
   status: z.nativeEnum(ProcessingStatus),
   error: z.string().optional(),
 });
-export type ProcessingStatusUpdate = z.infer<typeof ProcessingStatusUpdateSchema>;
+export type ProcessingStatusUpdate = z.infer<
+  typeof ProcessingStatusUpdateSchema
+>;

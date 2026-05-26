@@ -1,14 +1,12 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { DatabaseModule } from "@/modules/database/database.module";
+import { WebhookModule } from "@/modules/webhook/webhook.module";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '../../.env',
-    }),
-    // TODO: add modules as we build them:
-    // WebhookModule,
+    // DatabaseModule is @Global() — provides DRIZZLE token to all modules
+    DatabaseModule,
+    WebhookModule,
     // TransactionModule,
     // ReportModule,
     // AuthModule,

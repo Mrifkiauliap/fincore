@@ -1,11 +1,11 @@
+import { WorkerModule } from "@/worker.module";
 import { createLogger } from "@fincore/logger";
 import { NestFactory } from "@nestjs/core";
-import { WorkerModule } from "./worker.module";
 
 const logger = createLogger("worker");
 
 async function bootstrap() {
-  const app = await NestFactory.create(WorkerModule, {
+  const app = await NestFactory.createApplicationContext(WorkerModule, {
     logger: false,
   });
 

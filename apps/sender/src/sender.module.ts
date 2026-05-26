@@ -1,14 +1,10 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { WaSendModule } from "@/modules/wa-send/wa-send.module";
+import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '../../.env',
-    }),
+    WaSendModule,
     // TODO: add modules as we build them:
-    // WaSendModule,
     // SchedulerModule,
   ],
 })

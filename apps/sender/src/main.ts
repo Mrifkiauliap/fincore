@@ -1,16 +1,18 @@
-import { NestFactory } from '@nestjs/core';
-import { SenderModule } from './sender.module';
-import { createLogger } from '@fincore/logger';
+import { SenderModule } from "@/sender.module";
+import { createLogger } from "@fincore/logger";
+import { NestFactory } from "@nestjs/core";
 
-const logger = createLogger('sender');
+const logger = createLogger("sender");
 
 async function bootstrap() {
-  const app = await NestFactory.create(SenderModule, { logger: false });
+  const app = await NestFactory.createApplicationContext(SenderModule, {
+    logger: false,
+  });
   await app.init();
-  logger.info('📤 Sender is running and listening for outbound jobs...');
+  logger.info("📤 Sender is running and listening for outbound jobs...");
 }
 
 bootstrap().catch((err) => {
-  logger.error({ err }, 'Failed to start Sender');
+  logger.error({ err }, "Failed to start Sender");
   process.exit(1);
 });
