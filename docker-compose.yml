@@ -3,15 +3,15 @@ version: "3.9"
 services:
   # ─── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: fincore-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: fincore
       POSTGRES_PASSWORD: fincore
       POSTGRES_DB: fincore_db
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,14 +19,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - fincore_net
 
   # ─── Valkey ───────────────────────────────────────────────────────────────────
   valkey:
     image: valkey/valkey:8.1.7-alpine
     container_name: fincore-valkey
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     volumes:
       - valkey_data:/data
     command: valkey-server --appendonly yes
@@ -35,30 +37,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # ─── WAHA (WhatsApp HTTP API) ─────────────────────────────────────────────────
-  waha:
-    image: devlikeapro/waha
-    container_name: fincore-waha
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    environment:
-      WHATSAPP_API_KEY: ${WAHA_API_KEY:-changeme}
-      WHATSAPP_HOOK_URL: http://host.docker.internal:3000/webhook/whatsapp
-      WHATSAPP_HOOK_EVENTS: message,session.status
-    volumes:
-      - waha_data:/app/.sessions
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - fincore_net
 
   # ─── Bull Board (Queue Monitoring) ───────────────────────────────────────────
   bull-board:
     image: deadly0/bull-board
     container_name: fincore-bull-board
     restart: unless-stopped
-    ports:
-      - "3010:3000"
+    # ports:
+    #   - "3010:3000"
+    networks:
+      - fincore_net
     environment:
       REDIS_HOST: valkey
       REDIS_PORT: 6379
@@ -66,10 +56,21 @@ services:
       BULL_VERSION: BULLMQ
       QUEUE_NAMES: incoming-message;voice-transcription;image-ocr;ai-extraction;categorization;report-generation;wa-sender
       # Optional: auth
-      # BULL_BOARD_USERNAME: ${BULL_BOARD_USERNAME:-admin}
+      BULL_BOARD_USERNAME: ${BULL_BOARD_USERNAME:-admin}
       # BULL_BOARD_PASSWORD: ${BULL_BOARD_PASSWORD:-admin}
     depends_on:
       - valkey
+
+  # ─── Cloudflare Tunnel ───────────────────────────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: fincore-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    networks:
+      - fincore_net
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
 
   # ─── API (uncomment for containerized dev) ───────────────────────────────────
   # api:
@@ -114,7 +115,9 @@ services:
   #       condition: service_healthy
 
 volumes:
-  # postgres_data:
   postgres_data:
   valkey_data:
-  waha_data:
+
+networks:
+  fincore_net:
+    driver: bridge

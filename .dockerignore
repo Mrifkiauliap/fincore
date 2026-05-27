@@ -1,0 +1,14 @@
+.git
+.env
+.turbo
+node_modules
+dist
+coverage
+apps/*/dist
+apps/*/node_modules
+packages/*/dist
+packages/*/node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+.DS_Store
