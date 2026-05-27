@@ -25,3 +25,25 @@ Dengan konfigurasi ini:
 
 1. Ketika type-check dijalankan dari root (`tsconfig.json`), TypeScript dapat secara berurutan mencari path yang diimpor menggunakan `@/` pada folder `src` masing-masing aplikasi.
 2. Masing-masing sub-aplikasi (`apps/worker`, `apps/api`, `apps/sender`) tetap mempertahankan konfigurasi lokal mereka sendiri di `tsconfig.json` masing-masing untuk development dan build lokal yang terisolasi.
+
+---
+
+## Masalah Tambahan: Error Kompilasi Decorator (Legacy Decorators vs ES Decorators)
+
+Setelah alias `@/` berhasil diselesaikan, muncul error baru terkait dekorator di NestJS (seperti `@Post` dan `@HttpCode` pada `webhook.controller.ts`):
+
+- `TS1270: Decorator function return type 'void | TypedPropertyDescriptor<unknown>' is not assignable to type...`
+- `TS1241: Unable to resolve signature of method decorator when called as an expression...`
+
+Hal ini terjadi karena root `tsconfig.json` tidak mengaktifkan fitur dekorator eksperimental (legacy/experimental decorators). Tanpa opsi tersebut, TypeScript 5+ secara default memperlakukan dekorator menggunakan proposal ES Decorators modern yang memiliki tanda tangan (signature) berbeda dari yang diimplementasikan oleh NestJS.
+
+### Solusi Tambahan
+
+Mengaktifkan legacy decorators di root `tsconfig.json` pada `compilerOptions`:
+
+```json
+"experimentalDecorators": true,
+"emitDecoratorMetadata": true
+```
+
+Dengan demikian, kompilasi typecheck global dari root dapat mengenali sintaks dekorator khas NestJS tanpa menghasilkan error tipe data.

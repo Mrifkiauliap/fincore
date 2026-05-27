@@ -12,6 +12,8 @@
     "sourceMap": true,
     "incremental": true,
     "removeComments": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["apps/api/src/*", "apps/worker/src/*", "apps/sender/src/*"]
