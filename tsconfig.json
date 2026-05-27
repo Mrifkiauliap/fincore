@@ -12,7 +12,7 @@
     "sourceMap": true,
     "incremental": true,
     "removeComments": true,
-    "baseUrl": ".",
-    "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
-  }
+    "baseUrl": "."
+  },
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }
