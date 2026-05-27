@@ -1,43 +1,181 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
-export * from './enums';
+export * from "./enums";
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
-export * from './users';
-export * from './payment-methods';
-export * from './transaction-categories';
-export * from './raw-messages';
-export * from './raw-transcriptions';
-export * from './raw-ocr-results';
-export * from './raw-ai-outputs';
-export * from './transactions';
-export * from './transaction-tags';
-export * from './transaction-tag-mappings';
-export * from './reports';
-export * from './ai-processing-logs';
+export * from "./ai-processing-logs";
+export * from "./payment-methods";
+export * from "./raw-ai-outputs";
+export * from "./raw-messages";
+export * from "./recurring-bills";
+export * from "./reports";
+export * from "./transaction-categories";
+export * from "./transaction-tag-mappings";
+export * from "./transaction-tags";
+export * from "./transactions";
+export * from "./users";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { NewPaymentMethod } from './payment-methods';
-import type { NewTransactionCategory } from './transaction-categories';
+import type { NewPaymentMethod } from "./payment-methods";
+import type { NewTransactionCategory } from "./transaction-categories";
 
 // ─── Seed Data: Payment Methods ───────────────────────────────────────────────
 /**
  * Data default metode pembayaran (userId = NULL = global).
  * Seed saat pertama kali setup database.
  */
-export const DEFAULT_PAYMENT_METHODS: Omit<NewPaymentMethod, 'id'>[] = [
-  { name: 'Tunai / Cash',     type: 'cash',          icon: '💵', isActive: true, userId: null, color: null },
-  { name: 'GoPay',            type: 'e_wallet',       icon: '💚', isActive: true, userId: null, color: null },
-  { name: 'OVO',              type: 'e_wallet',       icon: '💜', isActive: true, userId: null, color: null },
-  { name: 'Dana',             type: 'e_wallet',       icon: '🔵', isActive: true, userId: null, color: null },
-  { name: 'ShopeePay',        type: 'e_wallet',       icon: '🟠', isActive: true, userId: null, color: null },
-  { name: 'LinkAja',          type: 'e_wallet',       icon: '🔴', isActive: true, userId: null, color: null },
-  { name: 'QRIS',             type: 'qris',           icon: '📷', isActive: true, userId: null, color: null },
-  { name: 'Transfer BCA',     type: 'bank_transfer',  icon: '🏦', isActive: true, userId: null, color: null },
-  { name: 'Transfer BNI',     type: 'bank_transfer',  icon: '🏦', isActive: true, userId: null, color: null },
-  { name: 'Transfer BRI',     type: 'bank_transfer',  icon: '🏦', isActive: true, userId: null, color: null },
-  { name: 'Transfer Mandiri', type: 'bank_transfer',  icon: '🏦', isActive: true, userId: null, color: null },
-  { name: 'Kartu Kredit',     type: 'credit_card',    icon: '💳', isActive: true, userId: null, color: null },
-  { name: 'Kartu Debit',      type: 'debit_card',     icon: '💳', isActive: true, userId: null, color: null },
+export const DEFAULT_PAYMENT_METHODS: Omit<NewPaymentMethod, "id">[] = [
+  {
+    name: "Tunai / Cash",
+    type: "cash",
+    icon: "💵",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "GoPay",
+    type: "e_wallet",
+    icon: "💚",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "OVO",
+    type: "e_wallet",
+    icon: "💜",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Dana",
+    type: "e_wallet",
+    icon: "🔵",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "ShopeePay",
+    type: "e_wallet",
+    icon: "🟠",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "LinkAja",
+    type: "e_wallet",
+    icon: "🔴",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "BCA",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "BNI",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "BRI",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Mandiri",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "BSI",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "CIMB Niaga",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Bank Jago",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Seabank",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Jenius",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Neo Bank",
+    type: "bank_transfer",
+    icon: "🏦",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Kartu Kredit",
+    type: "credit_card",
+    icon: "💳",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Kartu Debit",
+    type: "debit_card",
+    icon: "💳",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "PayLater",
+    type: "credit_card",
+    icon: "💸",
+    isActive: true,
+    userId: null,
+    color: null,
+  },
 ];
 
 // ─── Seed Data: Transaction Categories ───────────────────────────────────────
@@ -46,34 +184,277 @@ export const DEFAULT_PAYMENT_METHODS: Omit<NewPaymentMethod, 'id'>[] = [
  * Mencakup kategori expense, income, dan transfer.
  * Seed saat pertama kali setup database.
  */
-export const DEFAULT_TRANSACTION_CATEGORIES: Omit<NewTransactionCategory, 'id'>[] = [
+export const DEFAULT_TRANSACTION_CATEGORIES: Omit<
+  NewTransactionCategory,
+  "id"
+>[] = [
   // ── Expense ──
-  { name: 'Makanan & Minuman',     slug: 'food',              type: 'expense',  icon: '🍔', isDefault: true, isActive: true, sortOrder: 1,  userId: null, color: null },
-  { name: 'Transportasi',          slug: 'transport',         type: 'expense',  icon: '🚗', isDefault: true, isActive: true, sortOrder: 2,  userId: null, color: null },
-  { name: 'Belanja',               slug: 'shopping',          type: 'expense',  icon: '🛍️', isDefault: true, isActive: true, sortOrder: 3,  userId: null, color: null },
-  { name: 'Kesehatan',             slug: 'health',            type: 'expense',  icon: '💊', isDefault: true, isActive: true, sortOrder: 4,  userId: null, color: null },
-  { name: 'Hiburan',               slug: 'entertainment',     type: 'expense',  icon: '🎮', isDefault: true, isActive: true, sortOrder: 5,  userId: null, color: null },
-  { name: 'Tagihan & Utilitas',    slug: 'bills',             type: 'expense',  icon: '📄', isDefault: true, isActive: true, sortOrder: 6,  userId: null, color: null },
-  { name: 'Pendidikan',            slug: 'education',         type: 'expense',  icon: '📚', isDefault: true, isActive: true, sortOrder: 7,  userId: null, color: null },
-  { name: 'Investasi',             slug: 'investment_out',    type: 'expense',  icon: '📈', isDefault: true, isActive: true, sortOrder: 8,  userId: null, color: null },
-  { name: 'Perawatan Diri',        slug: 'personal_care',     type: 'expense',  icon: '💆', isDefault: true, isActive: true, sortOrder: 9,  userId: null, color: null },
-  { name: 'Rumah Tangga',          slug: 'household',         type: 'expense',  icon: '🏠', isDefault: true, isActive: true, sortOrder: 10, userId: null, color: null },
-  { name: 'Lainnya',               slug: 'other_expense',     type: 'expense',  icon: '📦', isDefault: true, isActive: true, sortOrder: 99, userId: null, color: null },
+  {
+    name: "Makanan & Minuman",
+    slug: "food",
+    type: "expense",
+    icon: "🍔",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 1,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Transportasi",
+    slug: "transport",
+    type: "expense",
+    icon: "🚗",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 2,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Belanja",
+    slug: "shopping",
+    type: "expense",
+    icon: "🛍️",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 3,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Kesehatan",
+    slug: "health",
+    type: "expense",
+    icon: "💊",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 4,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Hiburan",
+    slug: "entertainment",
+    type: "expense",
+    icon: "🎮",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 5,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Tagihan & Utilitas",
+    slug: "bills",
+    type: "expense",
+    icon: "📄",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 6,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Pendidikan",
+    slug: "education",
+    type: "expense",
+    icon: "📚",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 7,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Investasi",
+    slug: "investment_out",
+    type: "expense",
+    icon: "📈",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 8,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Perawatan Diri",
+    slug: "personal_care",
+    type: "expense",
+    icon: "💆",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 9,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Rumah Tangga",
+    slug: "household",
+    type: "expense",
+    icon: "🏠",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 10,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Lainnya",
+    slug: "other_expense",
+    type: "expense",
+    icon: "📦",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 99,
+    userId: null,
+    color: null,
+  },
 
   // ── Income ──
-  { name: 'Gaji',                  slug: 'salary',            type: 'income',   icon: '💰', isDefault: true, isActive: true, sortOrder: 1,  userId: null, color: null },
-  { name: 'Freelance',             slug: 'freelance',         type: 'income',   icon: '💻', isDefault: true, isActive: true, sortOrder: 2,  userId: null, color: null },
-  { name: 'Bisnis',                slug: 'business',          type: 'income',   icon: '🏪', isDefault: true, isActive: true, sortOrder: 3,  userId: null, color: null },
-  { name: 'Investasi',             slug: 'investment_in',     type: 'income',   icon: '📊', isDefault: true, isActive: true, sortOrder: 4,  userId: null, color: null },
-  { name: 'Bonus',                 slug: 'bonus',             type: 'income',   icon: '🎁', isDefault: true, isActive: true, sortOrder: 5,  userId: null, color: null },
-  { name: 'Hadiah / Hibah',        slug: 'gift',              type: 'income',   icon: '🎀', isDefault: true, isActive: true, sortOrder: 6,  userId: null, color: null },
-  { name: 'Hasil Jual',            slug: 'selling',           type: 'income',   icon: '🏷️', isDefault: true, isActive: true, sortOrder: 7,  userId: null, color: null },
-  { name: 'Lainnya',               slug: 'other_income',      type: 'income',   icon: '📦', isDefault: true, isActive: true, sortOrder: 99, userId: null, color: null },
+  {
+    name: "Gaji",
+    slug: "salary",
+    type: "income",
+    icon: "💰",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 1,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Freelance",
+    slug: "freelance",
+    type: "income",
+    icon: "💻",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 2,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Bisnis",
+    slug: "business",
+    type: "income",
+    icon: "🏪",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 3,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Investasi",
+    slug: "investment_in",
+    type: "income",
+    icon: "📊",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 4,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Bonus",
+    slug: "bonus",
+    type: "income",
+    icon: "🎁",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 5,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Hadiah / Hibah",
+    slug: "gift",
+    type: "income",
+    icon: "🎀",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 6,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Hasil Jual",
+    slug: "selling",
+    type: "income",
+    icon: "🏷️",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 7,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Lainnya",
+    slug: "other_income",
+    type: "income",
+    icon: "📦",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 99,
+    userId: null,
+    color: null,
+  },
 
   // ── Transfer ──
-  { name: 'Transfer Antar Rekening', slug: 'transfer_account',  type: 'transfer', icon: '🔄', isDefault: true, isActive: true, sortOrder: 1,  userId: null, color: null },
-  { name: 'Top Up E-Wallet',         slug: 'topup_ewallet',     type: 'transfer', icon: '📲', isDefault: true, isActive: true, sortOrder: 2,  userId: null, color: null },
-  { name: 'Bayar Utang',             slug: 'pay_debt',          type: 'transfer', icon: '🤝', isDefault: true, isActive: true, sortOrder: 3,  userId: null, color: null },
-  { name: 'Beri Pinjaman',           slug: 'give_loan',         type: 'transfer', icon: '🤲', isDefault: true, isActive: true, sortOrder: 4,  userId: null, color: null },
-  { name: 'Transfer + Fee Admin',    slug: 'transfer_with_fee', type: 'transfer', icon: '💸', isDefault: true, isActive: true, sortOrder: 5,  userId: null, color: null },
+  {
+    name: "Transfer Antar Rekening",
+    slug: "transfer_account",
+    type: "transfer",
+    icon: "🔄",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 1,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Top Up E-Wallet",
+    slug: "topup_ewallet",
+    type: "transfer",
+    icon: "📲",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 2,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Bayar Utang",
+    slug: "pay_debt",
+    type: "transfer",
+    icon: "🤝",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 3,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Beri Pinjaman",
+    slug: "give_loan",
+    type: "transfer",
+    icon: "🤲",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 4,
+    userId: null,
+    color: null,
+  },
+  {
+    name: "Transfer + Fee Admin",
+    slug: "transfer_with_fee",
+    type: "transfer",
+    icon: "💸",
+    isDefault: true,
+    isActive: true,
+    sortOrder: 5,
+    userId: null,
+    color: null,
+  },
 ];

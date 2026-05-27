@@ -19,30 +19,22 @@ export const rawMessages = pgTable(
   "raw_messages",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** Nullable: user mungkin belum register saat message masuk */
     userId: uuid("user_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    /** ID unik dari WAHA webhook, digunakan untuk deduplikasi */
     waMessageId: text("wa_message_id").notNull().unique(),
-    /** Nomor WhatsApp pengirim */
     from: text("from").notNull(),
     type: messageTypeEnum("type").notNull(),
-    /** Isi teks pesan, nullable untuk pesan media */
     body: text("body"),
-    /** URL media dari WAHA */
     mediaUrl: text("media_url"),
     mediaMimetype: text("media_mimetype"),
-    /** Ukuran file media dalam bytes */
     mediaSize: integer("media_size"),
-    /** Full webhook payload, tidak pernah ditrim */
+    storagePath: text("storage_path"),
     rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull(),
     processingStatus: processingStatusEnum("processing_status")
       .default("pending")
       .notNull(),
     processingError: text("processing_error"),
-    retryCount: integer("retry_count").default(0).notNull(),
-    /** Waktu dari webhook, bukan waktu insert ke DB */
     receivedAt: timestamp("received_at").notNull(),
     processedAt: timestamp("processed_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

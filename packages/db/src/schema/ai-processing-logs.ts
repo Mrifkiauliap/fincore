@@ -24,15 +24,10 @@ export const aiProcessingLogs = pgTable(
       .references(() => rawMessages.id, { onDelete: "cascade" }),
     step: processingStepEnum("step").notNull(),
     status: processingStatusEnum("status").notNull(),
-    /** Nama provider yang dipakai di step ini, contoh: 'groq', 'gemini', 'sumopod' */
     provider: text("provider"),
-    /** Durasi eksekusi step dalam milidetik */
     durationMs: integer("duration_ms"),
-    /** Snapshot input step ini untuk keperluan debug */
     inputSnapshot: jsonb("input_snapshot").$type<Record<string, unknown>>(),
-    /** Snapshot output step ini untuk keperluan debug */
     outputSnapshot: jsonb("output_snapshot").$type<Record<string, unknown>>(),
-    /** Error message jika step gagal */
     error: text("error"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

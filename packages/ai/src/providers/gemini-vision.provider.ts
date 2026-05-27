@@ -26,7 +26,9 @@ export class GeminiVisionProvider implements IVisionProvider {
       throw new Error("GEMINI_API_KEY is not defined");
     }
     this.client = new GoogleGenerativeAI(apiKey);
-    this.model = this.client.getGenerativeModel({ model: "gemini-1.5-flash" });
+    this.model = this.client.getGenerativeModel({
+      model: "gemini-2.5-flash",
+    });
   }
 
   async analyzeReceipt(
@@ -42,7 +44,11 @@ export class GeminiVisionProvider implements IVisionProvider {
       OCR_PROMPT,
       {
         inlineData: {
-          mimeType: mimetype as "image/jpeg" | "image/png" | "image/webp",
+          mimeType: mimetype as
+            | "image/jpeg"
+            | "image/png"
+            | "image/webp"
+            | "application/pdf",
           data: imageBuffer.toString("base64"),
         },
       },
@@ -53,7 +59,7 @@ export class GeminiVisionProvider implements IVisionProvider {
 
     return {
       extractedText,
-      provider: "gemini-1.5-flash",
+      provider: "gemini-2.5-flash",
     };
   }
 }

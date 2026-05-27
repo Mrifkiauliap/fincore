@@ -9,7 +9,7 @@ async function bootstrap() {
     logger: false,
   });
   await app.init();
-  logger.info("📤 Sender is running and listening for outbound jobs...");
+  logger.info("Sender is running and listening for outbound jobs...");
 }
 
 bootstrap().catch((err) => {

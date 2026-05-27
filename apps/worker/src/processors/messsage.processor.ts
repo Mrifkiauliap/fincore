@@ -110,6 +110,7 @@ export class IncomingMessageProcessor extends BaseProcessor {
               from: data.from,
               mediaUrl: data.mediaUrl,
               mediaMimetype: data.mediaMimetype ?? "audio/ogg; codecs=opus",
+              caption: data.body ?? null,
             },
           );
           break;
@@ -121,7 +122,12 @@ export class IncomingMessageProcessor extends BaseProcessor {
             userId: user.id,
             from: data.from,
             mediaUrl: data.mediaUrl,
-            mediaMimetype: data.mediaMimetype ?? "image/jpeg",
+            mediaMimetype:
+              data.mediaMimetype ??
+              (data.mediaUrl?.toLowerCase().endsWith(".pdf")
+                ? "application/pdf"
+                : "image/jpeg"),
+            caption: data.body ?? null,
           });
           break;
 

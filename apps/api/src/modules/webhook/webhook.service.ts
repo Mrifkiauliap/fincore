@@ -22,6 +22,11 @@ export class WebhookService {
   async handleIncoming(payload: WahaWebhookPayload): Promise<void> {
     if (payload.event !== "message") return;
 
+    logger.info(
+      { payload },
+      "================ Message received ================  ",
+    );
+
     const msg = payload.payload as WahaMessagePayload;
 
     // Skip messages sent by the bot itself
@@ -39,8 +44,13 @@ export class WebhookService {
       logger.info({ msg }, "Message received");
     }
 
-    // ── Trigger prefix check ─────────────────────────────────────────────────
-    if (this.triggerPrefix && !msg.body?.startsWith(this.triggerPrefix)) {
+    // ── Trigger prefix check (skip for media messages — they don't have a body) ──
+    const isMediaMessage = msg.hasMedia && !!msg.media?.url;
+    if (
+      this.triggerPrefix &&
+      !isMediaMessage &&
+      !msg.body?.startsWith(this.triggerPrefix)
+    ) {
       logger.debug({ body: msg.body }, "Message skipped — prefix mismatch");
       return;
     }
@@ -50,10 +60,25 @@ export class WebhookService {
       : (msg.body ?? "");
 
     const senderPhone = extractPhone(msg.from);
+
+    // ── Extract media info from WAHA payload ─────────────────────────────────
+    // WAHA NOWEB engine puts media info under msg.media.{url, mimetype}
+    const mediaUrl =
+      (msg.media?.url as string | undefined) ?? msg.mediaUrl ?? null;
+    let mediaMimetype =
+      (msg.media?.mimetype as string | undefined) ??
+      msg.mediaContentType ??
+      null;
+
+    if (!mediaMimetype && mediaUrl && mediaUrl.toLowerCase().endsWith(".pdf")) {
+      mediaMimetype = "application/pdf";
+    }
+
     const messageType = mapWahaTypeToMessageType(
       msg.type,
       msg.hasMedia,
       msg.body,
+      mediaMimetype,
     );
 
     if (!messageType) {
@@ -93,7 +118,7 @@ export class WebhookService {
         return;
       }
 
-      // QUERY_REPORT goes to a different queue
+      // QUERY_REPORT goes to report queue
       if (intentResult.intent === MessageIntent.QUERY_REPORT) {
         await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
           from: msg.from,
@@ -112,6 +137,49 @@ export class WebhookService {
         });
         return;
       }
+
+      // CONFIRMATION_REPLY — user menjawab ya/tidak untuk transaksi pending
+      if (intentResult.intent === MessageIntent.CONFIRMATION_REPLY) {
+        await enqueue(QueueName.CONFIRMATION, JobName.CONFIRM_TRANSACTION, {
+          chatId: msg.from,
+          senderPhone,
+          answer: intentResult.extractedQuery ?? cleanBody, // "yes" or "no"
+        });
+        return;
+      }
+
+      // SETUP_RECURRING — user ingin set reminder tagihan berulang
+      if (intentResult.intent === MessageIntent.SETUP_RECURRING) {
+        await enqueue(QueueName.RECURRING_SETUP, JobName.SETUP_RECURRING, {
+          chatId: msg.from,
+          senderPhone,
+          message: cleanBody,
+        });
+        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+          chatId: msg.from,
+          text: "Sedang menyimpan pengingat tagihan...",
+          replyTo: msg.id,
+        });
+        return;
+      }
+
+      // COMMAND — perintah bantuan/help dll
+      if (intentResult.intent === MessageIntent.COMMAND) {
+        const lowerBody = cleanBody.toLowerCase();
+        let reply = "Fitur command ini sedang dibangun! 🚧";
+        if (
+          lowerBody.startsWith(this.triggerPrefix + "bantuan") ||
+          lowerBody.startsWith(this.triggerPrefix + "help")
+        ) {
+          reply = this.getGreetingReply();
+        }
+        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+          chatId: msg.from,
+          text: reply,
+          replyTo: msg.id,
+        });
+        return;
+      }
     }
 
     // ── Enqueue the raw message for storage + processing ─────────────────────
@@ -124,8 +192,8 @@ export class WebhookService {
         senderPhone,
         type: messageType,
         body: cleanBody,
-        mediaUrl: msg.mediaUrl ?? null,
-        mediaMimetype: msg.mediaContentType ?? null,
+        mediaUrl,
+        mediaMimetype,
         mediaSize: msg.mediaSize ?? null,
         rawPayload: payload,
         timestamp: msg.timestamp,
@@ -175,7 +243,7 @@ export class WebhookService {
       `• Transfer: _"Tf ke Jago 500rb dari BSI, admin 2500"_\n` +
       `• Kirim struk atau voice note\n` +
       `• Tanya: _"Berapa pengeluaranku minggu ini?"_\n\n` +
-      `Ketik /bantuan untuk panduan lengkap.`
+      `Ketik ${this.triggerPrefix}bantuan untuk panduan lengkap.`
     );
   }
 }

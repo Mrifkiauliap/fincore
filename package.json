@@ -15,22 +15,37 @@
     "db:generate": "turbo run db:generate --filter=@fincore/db",
     "db:migrate": "turbo run db:migrate --filter=@fincore/db",
     "db:push": "turbo run db:push --filter=@fincore/db",
-    "db:reset": "turbo run db:push --filter=@fincore/db && turbo run db:generate --filter=@fincore/db",
+    "db:reset": "turbo run db:push --filter=@fincore/db && turbo run db:migrate --filter=@fincore/db",
+    "db:reset:hard": "node infrastructure/scripts/reset-db.js",
+    "db:seed": "turbo run db:seed --filter=@fincore/db",
     "db:studio": "turbo run db:studio --filter=@fincore/db",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "reset:all": "pnpm run clean && pnpm install && turbo run build"
+    "reset:all": "pnpm run clean && pnpm install && turbo run build",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "pg": "^8.11.3",
     "prettier": "^3.2.0",
+    "tsx": "^4.7.1",
     "turbo": "^2.0.0",
     "typescript": "^5.3.3"
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "prettier --write"
+    ],
+    "**/*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@11.3.0"
 }

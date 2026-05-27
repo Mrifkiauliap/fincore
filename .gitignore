@@ -39,3 +39,6 @@ drizzle/
 
 # Testing
 coverage/
+
+# File
+uploads

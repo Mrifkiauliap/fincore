@@ -1,5 +1,5 @@
 {
-  "name": "@fincore/utils",
+  "name": "@fincore/storage",
   "version": "0.0.1",
   "private": true,
   "main": "./dist/index.js",
@@ -8,11 +8,12 @@
     "build": "tsc",
     "clean": "rm -rf dist"
   },
+  "dependencies": {
+    "@fincore/config": "workspace:*",
+    "@fincore/logger": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "dayjs": "^1.11.10"
   }
 }

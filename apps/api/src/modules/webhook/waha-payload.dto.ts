@@ -29,21 +29,28 @@ export interface WahaEnvironment {
   tier: string;
 }
 
+export interface WahaMediaObject {
+  url: string;
+  filename: string | null;
+  mimetype: string;
+}
+
 export interface WahaMessagePayload {
   id: string;
   timestamp: number;
   from: string;
   fromMe: boolean;
   to?: string;
-  body: string;
+  body: string; // text content or caption for media messages
   hasMedia: boolean;
-  media?: any;
-  mediaUrl?: string;
-  mediaContentType?: string;
+  media?: WahaMediaObject; // WAHA NOWEB: media info is here
+  mediaUrl?: string; // legacy / other engines fallback
+  mediaContentType?: string; // legacy fallback
   mediaSize?: number;
   type?: WahaMessageType;
   ack?: number;
   vCards?: string[];
+  replyTo?: string | null;
   _data?: Record<string, unknown>;
 }
 
@@ -74,6 +81,7 @@ export function mapWahaTypeToMessageType(
   wahaType?: WahaMessageType,
   hasMedia?: boolean,
   body?: string,
+  mimetype?: string | null,
 ): "text" | "voice" | "image" | "document" | "video" | null {
   if (wahaType) {
     const map: Partial<
@@ -90,6 +98,12 @@ export function mapWahaTypeToMessageType(
   }
 
   if (hasMedia) {
+    if (mimetype) {
+      if (mimetype.startsWith("audio/")) return "voice";
+      if (mimetype.startsWith("video/")) return "video";
+      if (mimetype.startsWith("image/")) return "image";
+      return "document";
+    }
     return "image";
   } else if (body) {
     return "text";

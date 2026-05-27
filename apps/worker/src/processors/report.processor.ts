@@ -1,4 +1,5 @@
 import { BaseProcessor } from "@/processors/base.processor";
+import { SumopodProvider } from "@fincore/ai";
 import getConfig from "@fincore/config";
 import {
   getDb,
@@ -12,7 +13,17 @@ import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
 import { Job } from "bullmq";
+import dayjs from "dayjs";
+import "dayjs/locale/id";
+import isoWeek from "dayjs/plugin/isoWeek";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, between, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(isoWeek);
+dayjs.locale("id");
 
 interface ReportJobData {
   from: string; // WhatsApp chatId
@@ -84,65 +95,52 @@ interface ParsedQuery {
 }
 
 // ─── Date range helpers ───────────────────────────────────────────────────────
-function getDateRange(parsed: ParsedQuery): {
+function getDateRange(
+  parsed: ParsedQuery,
+  userTimezone: string = "Asia/Jakarta",
+): {
   from: Date;
   to: Date;
   label: string;
 } {
-  const now = new Date();
-  const startOf = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-  const endOf = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  const now = dayjs().tz(userTimezone);
+  const startOf = (d: dayjs.Dayjs) => d.startOf("day").toDate();
+  const endOf = (d: dayjs.Dayjs) => d.endOf("day").toDate();
 
   switch (parsed.periode) {
     case "today":
       return { from: startOf(now), to: endOf(now), label: "hari ini" };
     case "yesterday": {
-      const y = new Date(now);
-      y.setDate(y.getDate() - 1);
+      const y = now.subtract(1, "day");
       return { from: startOf(y), to: endOf(y), label: "kemarin" };
     }
     case "this_week": {
-      const day = now.getDay(); // 0 = Sunday
-      const mon = new Date(now);
-      mon.setDate(now.getDate() - ((day + 6) % 7)); // Monday
+      const mon = now.startOf("isoWeek");
       return { from: startOf(mon), to: endOf(now), label: "minggu ini" };
     }
     case "last_week": {
-      const day = now.getDay();
-      const thisMonday = new Date(now);
-      thisMonday.setDate(now.getDate() - ((day + 6) % 7));
-      const lastMonday = new Date(thisMonday);
-      lastMonday.setDate(thisMonday.getDate() - 7);
-      const lastSunday = new Date(thisMonday);
-      lastSunday.setDate(thisMonday.getDate() - 1);
+      const lastWeek = now.subtract(1, "week");
+      const mon = lastWeek.startOf("isoWeek");
+      const sun = lastWeek.endOf("isoWeek");
       return {
-        from: startOf(lastMonday),
-        to: endOf(lastSunday),
+        from: startOf(mon),
+        to: endOf(sun),
         label: "minggu lalu",
       };
     }
     case "this_month": {
-      const from = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { from, to: endOf(now), label: "bulan ini" };
+      const from = now.startOf("month");
+      return { from: startOf(from), to: endOf(now), label: "bulan ini" };
     }
     case "last_month": {
-      const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const to = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
-      return { from, to, label: "bulan lalu" };
+      const lastMonth = now.subtract(1, "month");
+      const from = lastMonth.startOf("month");
+      const to = lastMonth.endOf("month");
+      return { from: startOf(from), to: endOf(to), label: "bulan lalu" };
     }
     case "this_year": {
-      const from = new Date(now.getFullYear(), 0, 1);
-      return { from, to: endOf(now), label: "tahun ini" };
+      const from = now.startOf("year");
+      return { from: startOf(from), to: endOf(now), label: "tahun ini" };
     }
     case "month_name": {
       const MONTHS: Record<string, number> = {
@@ -160,19 +158,24 @@ function getDateRange(parsed: ParsedQuery): {
         desember: 11,
       };
       const mIdx =
-        MONTHS[parsed.month_name?.toLowerCase() ?? ""] ?? now.getMonth();
-      const year =
-        mIdx > now.getMonth() ? now.getFullYear() - 1 : now.getFullYear();
-      const from = new Date(year, mIdx, 1);
-      const to = new Date(year, mIdx + 1, 0, 23, 59, 59, 999);
+        MONTHS[parsed.month_name?.toLowerCase() ?? ""] ?? now.month();
+      let year = now.year();
+      if (mIdx > now.month()) {
+        year -= 1; // Jika menunjuk ke bulan yang lewat, asumsikan tahun lalu
+      }
+
+      const targetMonth = now.year(year).month(mIdx);
+      const from = targetMonth.startOf("month");
+      const to = targetMonth.endOf("month");
+
       const label = parsed.month_name
         ? parsed.month_name.charAt(0).toUpperCase() + parsed.month_name.slice(1)
         : "bulan ini";
-      return { from, to, label };
+      return { from: startOf(from), to: endOf(to), label };
     }
     default: {
-      const from = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { from, to: endOf(now), label: "bulan ini" };
+      const from = now.startOf("month");
+      return { from: startOf(from), to: endOf(now), label: "bulan ini" };
     }
   }
 }
@@ -197,7 +200,7 @@ export class ReportProcessor extends BaseProcessor {
     const db = getDb();
 
     const [user] = await db
-      .select({ id: users.id })
+      .select({ id: users.id, timezone: users.timezone })
       .from(users)
       .where(eq(users.phone, senderPhone))
       .limit(1);
@@ -217,7 +220,7 @@ export class ReportProcessor extends BaseProcessor {
       from: dateFrom,
       to: dateTo,
       label: periodLabel,
-    } = getDateRange(parsed);
+    } = getDateRange(parsed, user.timezone ?? "Asia/Jakarta");
 
     const baseFilters = [
       eq(transactions.userId, user.id),
@@ -229,7 +232,7 @@ export class ReportProcessor extends BaseProcessor {
       baseFilters.push(eq(transactions.type, parsed.transaction_type));
     }
 
-    const reply = await this.buildReport(
+    let reply = await this.buildReport(
       db,
       parsed,
       baseFilters,
@@ -237,7 +240,22 @@ export class ReportProcessor extends BaseProcessor {
       user.id,
       dateFrom,
       dateTo,
+      user.timezone ?? "Asia/Jakarta",
     );
+
+    // ─── Generate AI Insight ──────────────────────────────────────────────────
+    try {
+      const ai = new SumopodProvider();
+      const insight = await ai.generateSummary(reply);
+      if (insight) {
+        reply = `${reply}\n\n💡 *AI Insight:*\n_${insight}_`;
+      }
+    } catch (err) {
+      this.logger.warn(
+        { err },
+        "Failed to generate AI insight, continuing with raw report",
+      );
+    }
 
     await this.sendReply(chatId, reply);
   }
@@ -251,14 +269,25 @@ export class ReportProcessor extends BaseProcessor {
     userId: string,
     dateFrom: Date,
     dateTo: Date,
+    userTimezone: string,
   ): Promise<string> {
     switch (parsed.report_type) {
       case "balance":
         return this.buildBalanceReport(db, userId, periodLabel);
       case "top_expenses":
-        return this.buildTopExpensesReport(db, baseFilters, periodLabel);
+        return this.buildTopExpensesReport(
+          db,
+          baseFilters,
+          periodLabel,
+          userTimezone,
+        );
       case "top_income":
-        return this.buildTopIncomeReport(db, baseFilters, periodLabel);
+        return this.buildTopIncomeReport(
+          db,
+          baseFilters,
+          periodLabel,
+          userTimezone,
+        );
       case "by_category":
         return this.buildByCategoryReport(
           db,
@@ -287,6 +316,7 @@ export class ReportProcessor extends BaseProcessor {
           periodLabel,
           dateFrom,
           dateTo,
+          userTimezone,
         );
     }
   }
@@ -300,6 +330,7 @@ export class ReportProcessor extends BaseProcessor {
     periodLabel: string,
     dateFrom: Date,
     dateTo: Date,
+    userTimezone: string,
   ): Promise<string> {
     // Get totals per type
     const rows = await db
@@ -369,10 +400,9 @@ export class ReportProcessor extends BaseProcessor {
       lines.push("", "Transaksi terakhir:");
       for (const t of recent) {
         const label = t.merchant ?? t.notes ?? t.type;
-        const dateStr = new Date(t.transactionDate).toLocaleDateString(
-          "id-ID",
-          { day: "numeric", month: "short" },
-        );
+        const dateStr = dayjs(t.transactionDate)
+          .tz(userTimezone)
+          .format("D MMM");
         lines.push(`- ${dateStr}: ${label} ${fmt(parseFloat(t.amount))}`);
       }
     }
@@ -422,6 +452,7 @@ export class ReportProcessor extends BaseProcessor {
     db: ReturnType<typeof getDb>,
     baseFilters: any[],
     periodLabel: string,
+    userTimezone: string,
   ): Promise<string> {
     const rows = await db
       .select({
@@ -442,10 +473,7 @@ export class ReportProcessor extends BaseProcessor {
     const lines = [`*Pengeluaran Terbesar - ${periodLabel}*`, ""];
     rows.forEach((r, i) => {
       const label = r.merchant ?? r.notes ?? "Tanpa keterangan";
-      const dateStr = new Date(r.transactionDate).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-      });
+      const dateStr = dayjs(r.transactionDate).tz(userTimezone).format("D MMM");
       lines.push(
         `${i + 1}. ${label} — ${fmt(parseFloat(r.amount))} (${dateStr})`,
       );
@@ -459,6 +487,7 @@ export class ReportProcessor extends BaseProcessor {
     db: ReturnType<typeof getDb>,
     baseFilters: any[],
     periodLabel: string,
+    userTimezone: string,
   ): Promise<string> {
     const rows = await db
       .select({
@@ -479,10 +508,7 @@ export class ReportProcessor extends BaseProcessor {
     const lines = [`*Pemasukan Terbesar - ${periodLabel}*`, ""];
     rows.forEach((r, i) => {
       const label = r.merchant ?? r.notes ?? "Tanpa keterangan";
-      const dateStr = new Date(r.transactionDate).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-      });
+      const dateStr = dayjs(r.transactionDate).tz(userTimezone).format("D MMM");
       lines.push(
         `${i + 1}. ${label} — ${fmt(parseFloat(r.amount))} (${dateStr})`,
       );

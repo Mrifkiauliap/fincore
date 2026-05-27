@@ -49,6 +49,6 @@ Bagaimana menyediakan query laporan yang fleksibel (cek pengeluaran bulanan, pem
 ### Hasil
 
 Sistem laporan kini sangat responsif dan adaptif. User bisa mengirim pesan seperti:
+
 - "pemasukan terbesar bulan ini" -> AI memetakan `report_type = "top_income"` dan menghasilkan daftar 5 pemasukan teratas lengkap dengan sumber dan tanggal.
 - "rekap pengeluaran minggu lalu" -> AI memetakan `report_type = "summary"`, memfilter pengeluaran saja, dan menampilkan total serta riwayat singkat.
-

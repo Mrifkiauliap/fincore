@@ -53,21 +53,25 @@ const envSchema = z.object({
   // OCR / Vision
   GEMINI_API_KEY: z.string().optional(),
 
+  // Storage
+  STORAGE_TYPE: z.string().default("local"),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_S3_BUCKET: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+
   // Bull Board
   BULL_BOARD_USERNAME: z.string().default("admin"),
   BULL_BOARD_PASSWORD: z.string().default("admin123"),
 
   // Personal access control
-  /** Only this WA number is processed. Others are silently ignored. Format: 628xxxxxxxxxx */
   OWNER_PHONE: z.string().optional(),
-  /** Optional WhatsApp LID (Linked Device ID) for privacy mode fallback */
   OWNER_LID: z.string().optional(),
-  /**
-   * Optional trigger prefix for multi-instance WA sharing.
-   * E.g. "💰" > only messages starting with 💰 are processed by FinCore.
-   * Leave empty to process all messages from OWNER_PHONE.
-   */
   FINCORE_TRIGGER_PREFIX: z.string().optional(),
+
+  // Worker
+  WORKER_PORT: z.coerce.number().default(3002),
+  WORKER_CONCURRENCY: z.coerce.number().default(5),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

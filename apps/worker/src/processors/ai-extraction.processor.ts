@@ -3,37 +3,60 @@ import { SumopodProvider } from "@fincore/ai";
 import getConfig from "@fincore/config";
 import { AiExtractionOutput } from "@fincore/contracts";
 import {
+  aiProcessingLogs,
   getDb,
   paymentMethods,
   rawAiOutputs,
   rawMessages,
   transactionCategories,
   transactions,
+  transactionTagMappings,
+  transactionTags,
 } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
-import { JobName, MessageType, QueueName } from "@fincore/shared";
+import { createValkeyConnection, enqueue } from "@fincore/queue";
+import {
+  JobName,
+  MessageType,
+  PENDING_CONFIRMATION_TTL_SECONDS,
+  QueueName,
+} from "@fincore/shared";
+import { StorageProvider } from "@fincore/storage";
+import {
+  formatCurrency,
+  getTransactionTypeLabel,
+  toTitleCase,
+} from "@fincore/utils";
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
 import { Job } from "bullmq";
 import { and, eq, ilike, isNull, or } from "drizzle-orm";
 
 interface AiExtractionJobData {
-  rawMessageId: string; // DB UUID (raw_messages.id)
-  userId: string; // DB UUID (users.id)
-  from: string; // WhatsApp chatId for reply
+  rawMessageId: string;
+  userId: string;
+  from: string; // WhatsApp chatId
   sourceType: MessageType;
   content: string;
 }
 
-const CONFIDENCE_THRESHOLD = 0.4;
+// Confidence thresholds
+const CONFIDENCE_MIN = 0.4; // di bawah ini: tolak
+const CONFIDENCE_AUTO = 0.7; // di atas ini: simpan langsung tanpa konfirmasi
+
+// Redis key helper
+const pendingConfirmKey = (chatId: string) =>
+  `fincore:pending_confirm:${chatId}`;
 
 @Injectable()
 export class AiExtractionProcessor extends BaseProcessor {
   readonly queueName = QueueName.AI_EXTRACTION;
   private readonly ai = new SumopodProvider();
+  private readonly storageProvider = new StorageProvider();
+  private valkey: ReturnType<typeof createValkeyConnection>;
 
   constructor() {
     super("processor:ai-extraction");
+    this.valkey = createValkeyConnection();
   }
 
   async process(job: Job<AiExtractionJobData>): Promise<void> {
@@ -46,35 +69,119 @@ export class AiExtractionProcessor extends BaseProcessor {
       "Starting AI extraction",
     );
 
-    // ── 1. Extract via AI ─────────────────────────────────────────────────────
-    let extracted: AiExtractionOutput;
+    // ── 1. Fetch Dynamic Context ──────────────────────────────────────────────
+    const allCategories = await db
+      .select({
+        slug: transactionCategories.slug,
+        type: transactionCategories.type,
+      })
+      .from(transactionCategories)
+      .where(
+        and(
+          eq(transactionCategories.isActive, true),
+          or(
+            isNull(transactionCategories.userId),
+            eq(transactionCategories.userId, data.userId),
+          ),
+        ),
+      );
+
+    const allPaymentMethods = await db
+      .select({ name: paymentMethods.name })
+      .from(paymentMethods)
+      .where(
+        and(
+          eq(paymentMethods.isActive, true),
+          or(
+            isNull(paymentMethods.userId),
+            eq(paymentMethods.userId, data.userId),
+          ),
+        ),
+      );
+
+    const userTags = await db
+      .select({ name: transactionTags.name })
+      .from(transactionTags)
+      .where(eq(transactionTags.userId, data.userId))
+      .limit(30);
+
+    const context = {
+      categories: {
+        expense: allCategories
+          .filter((c) => c.type === "expense")
+          .map((c) => c.slug),
+        income: allCategories
+          .filter((c) => c.type === "income")
+          .map((c) => c.slug),
+        transfer: allCategories
+          .filter((c) => c.type === "transfer")
+          .map((c) => c.slug),
+      },
+      paymentMethods: allPaymentMethods.map((p) => p.name),
+      tags: userTags.map((t) => t.name),
+    };
+
+    // ── 2. Extract via AI (returns array) ─────────────────────────────────────
+    let extractedList: AiExtractionOutput[];
     let rawResponse = "";
     try {
-      extracted = await this.ai.extractTransaction(data.content);
-      rawResponse = JSON.stringify(extracted);
-    } catch (err) {
-      // AI call failed entirely > mark failed, send error reply
-      await this.markFailed(
+      extractedList = await this.ai.extractTransaction(data.content, context);
+      rawResponse = JSON.stringify(extractedList);
+
+      const durationMs = Date.now() - start;
+      await db.insert(aiProcessingLogs).values({
+        rawMessageId: data.rawMessageId,
+        step: "ai_extraction",
+        status: "done",
+        provider: "sumopod",
+        durationMs,
+        inputSnapshot: { content: data.content },
+        outputSnapshot: { extracted: extractedList as any },
+      });
+    } catch (err: any) {
+      const durationMs = Date.now() - start;
+      await db.insert(aiProcessingLogs).values({
+        rawMessageId: data.rawMessageId,
+        step: "ai_extraction",
+        status: "failed",
+        provider: "sumopod",
+        durationMs,
+        inputSnapshot: { content: data.content },
+        error: err?.message || String(err),
+      });
+
+      await this.handleExtractionFailure(
         db,
         data.rawMessageId,
         `AI extraction error: ${(err as Error).message}`,
+        data.from,
       );
-      await this.sendReply(data.from, this.getExtractionErrorReply());
-      throw err; // rethrow so BullMQ handles retry
+      return;
     }
 
-    // ── 2. Confidence check ───────────────────────────────────────────────────
-    if (extracted.confidence_score < CONFIDENCE_THRESHOLD) {
-      this.logger.info(
-        { confidence: extracted.confidence_score },
-        "Low confidence, skipping transaction save",
-      );
-      await this.markFailed(
+    // ── 2. Global confidence check (no transactions detected) ─────────────────
+    if (extractedList.length === 0) {
+      this.logger.info("No transactions detected in message");
+      await this.handleExtractionFailure(
         db,
         data.rawMessageId,
-        `Low confidence: ${extracted.confidence_score}`,
+        "No transactions detected",
+        data.from,
       );
-      await this.sendReply(data.from, this.getExtractionErrorReply());
+      return;
+    }
+
+    const anyAboveMin = extractedList.some(
+      (e) => e.confidence_score >= CONFIDENCE_MIN,
+    );
+    if (!anyAboveMin) {
+      this.logger.info("All transactions below confidence threshold");
+      await this.handleExtractionFailure(
+        db,
+        data.rawMessageId,
+        `Low confidence: ${extractedList.map((e) => e.confidence_score).join(", ")}`,
+        data.from,
+      );
       return;
     }
 
@@ -83,111 +190,235 @@ export class AiExtractionProcessor extends BaseProcessor {
       rawMessageId: data.rawMessageId,
       prompt: data.content,
       response: rawResponse,
-      parsedOutput: extracted,
+      parsedOutput: extractedList as any,
       provider: "sumopod",
       model: "gpt-4o-mini",
       isValid: true,
     });
 
-    // ── 4. Resolve category ───────────────────────────────────────────────────
-    const categoryId = await this.resolveCategory(
-      db,
-      extracted.category,
-      extracted.type,
-      data.userId,
-    );
+    // ── 4. Process each transaction ───────────────────────────────────────────
+    const savedIds: string[] = [];
+    const pendingIds: string[] = [];
+    const savedSummaries: string[] = [];
+    const pendingSummaries: string[] = [];
 
-    // ── 5. Resolve payment method (with AI fallback + semantic match) ─────────
-    const paymentMethodId = extracted.payment_method
-      ? await this.resolvePaymentMethod(
-          db,
-          extracted.payment_method,
-          data.userId,
-          data.from,
-        )
-      : null;
+    for (const extracted of extractedList) {
+      if (extracted.confidence_score < CONFIDENCE_MIN) {
+        this.logger.info(
+          { confidence: extracted.confidence_score },
+          "Skipping low-confidence item in multi-transaction",
+        );
+        continue;
+      }
 
-    // null means resolution failed AND user was notified — abort
-    if (extracted.payment_method && paymentMethodId === false) {
-      await this.markFailed(
+      // ── 4a. Resolve category ───────────────────────────────────────────────
+      const categoryId = await this.resolveCategory(
         db,
-        data.rawMessageId,
-        `Payment method not resolved: ${extracted.payment_method}`,
+        extracted.category,
+        extracted.type,
+        data.userId,
       );
-      return;
-    }
 
-    // Resolve to_payment_method for transfers
-    const toPaymentMethodId =
-      extracted.type === "transfer" && extracted.to_payment_method
+      // ── 4b. Resolve payment method ─────────────────────────────────────────
+      const paymentMethodId = extracted.payment_method
         ? await this.resolvePaymentMethod(
             db,
-            extracted.to_payment_method,
+            extracted.payment_method,
             data.userId,
             data.from,
           )
         : null;
 
-    // ── 6. Insert transaction ──────────────────────────────────────────────────
-    const transactionDate = new Date();
+      if (extracted.payment_method && paymentMethodId === false) {
+        await this.markFailed(
+          db,
+          data.rawMessageId,
+          `Payment method not resolved: ${extracted.payment_method}`,
+        );
+        return;
+      }
 
-    const [transaction] = await db
-      .insert(transactions)
-      .values({
-        userId: data.userId,
-        rawMessageId: data.rawMessageId,
-        categoryId: categoryId ?? undefined,
-        paymentMethodId: (paymentMethodId as string | null) ?? undefined,
-        toPaymentMethodId:
-          (toPaymentMethodId as string | null | false) &&
-          typeof toPaymentMethodId === "string"
-            ? toPaymentMethodId
-            : undefined,
-        type: extracted.type,
-        amount: String(extracted.amount),
-        fee: String(extracted.fee),
-        totalAmount: String(extracted.total_amount),
-        feeNote: extracted.fee_note ?? undefined,
-        currency: extracted.currency,
-        merchant: extracted.merchant ?? undefined,
-        location: extracted.location ?? undefined,
-        notes: extracted.notes ?? undefined,
-        sourceType: data.sourceType,
-        confidenceScore: extracted.confidence_score,
-        isConfirmed: extracted.confidence_score >= 0.7,
-        transactionDate,
-      })
-      .returning();
+      const toPaymentMethodId =
+        extracted.type === "transfer" && extracted.to_payment_method
+          ? await this.resolvePaymentMethod(
+              db,
+              extracted.to_payment_method,
+              data.userId,
+              data.from,
+            )
+          : null;
 
-    this.logger.info(
-      {
-        transactionId: transaction.id,
-        type: extracted.type,
-        amount: extracted.amount,
-        latencyMs: Date.now() - start,
-      },
-      "Transaction saved ✅",
-    );
+      // ── 4c. Resolve tags ───────────────────────────────────────────────────
+      const resolvedTagIds = await this.resolveTags(
+        db,
+        extracted.tags,
+        data.userId,
+      );
 
-    // ── 7. Update raw_message status ──────────────────────────────────────────
+      // ── 4d. Determine if needs confirmation ────────────────────────────────
+      const needsConfirmation = extracted.confidence_score < CONFIDENCE_AUTO;
+      const transactionDate = new Date();
+
+      const [transaction] = await db
+        .insert(transactions)
+        .values({
+          userId: data.userId,
+          rawMessageId: data.rawMessageId,
+          name: extracted.name ?? "Transaksi",
+          categoryId: categoryId ?? undefined,
+          paymentMethodId: (paymentMethodId as string | null) ?? undefined,
+          toPaymentMethodId:
+            (toPaymentMethodId as string | null | false) &&
+            typeof toPaymentMethodId === "string"
+              ? toPaymentMethodId
+              : undefined,
+          type: extracted.type,
+          amount: String(extracted.amount),
+          fee: String(extracted.fee),
+          totalAmount: String(extracted.total_amount),
+          feeNote: extracted.fee_note ?? undefined,
+          currency: extracted.currency,
+          merchant: extracted.merchant ?? undefined,
+          location: extracted.location ?? undefined,
+          notes: extracted.notes ?? undefined,
+          sourceType: data.sourceType,
+          confidenceScore: extracted.confidence_score,
+          isConfirmed: !needsConfirmation,
+          transactionDate,
+        })
+        .returning();
+
+      // ── 4e. Insert tag mappings ───────────────────────────────────────────
+      if (resolvedTagIds.length > 0) {
+        await db.insert(transactionTagMappings).values(
+          resolvedTagIds.map((tagId) => ({
+            transactionId: transaction.id,
+            tagId,
+          })),
+        );
+      }
+
+      this.logger.info(
+        {
+          transactionId: transaction.id,
+          type: extracted.type,
+          amount: extracted.amount,
+          needsConfirmation,
+          tagsCount: resolvedTagIds.length,
+          latencyMs: Date.now() - start,
+        },
+        needsConfirmation ? "Transaction saved (pending)" : "Transaction saved",
+      );
+
+      const summaryLine = this.buildTransactionSummaryLine(extracted);
+
+      if (needsConfirmation) {
+        pendingIds.push(transaction.id);
+        pendingSummaries.push(summaryLine);
+      } else {
+        savedIds.push(transaction.id);
+        savedSummaries.push(summaryLine);
+      }
+    }
+
+    // ── 5. Update raw_message status ──────────────────────────────────────────
+    const hasPending = pendingIds.length > 0;
     await db
       .update(rawMessages)
-      .set({ processingStatus: "done", processedAt: new Date() })
+      .set({
+        processingStatus: hasPending ? "pending_confirmation" : "done",
+        processedAt: new Date(),
+      })
       .where(eq(rawMessages.id, data.rawMessageId));
 
-    // ── 8. Send confirmation reply to user ────────────────────────────────────
-    const replyText = this.buildConfirmationReply(extracted, transaction.id);
+    // ── 6. Store pending confirmation state in Valkey ─────────────────────────
+    if (hasPending) {
+      const pendingPayload = JSON.stringify({
+        transactionIds: pendingIds,
+        rawMessageId: data.rawMessageId,
+      });
+      await this.valkey.set(
+        pendingConfirmKey(data.from),
+        pendingPayload,
+        "EX",
+        PENDING_CONFIRMATION_TTL_SECONDS,
+      );
+    }
+
+    // ── 7. Send reply ─────────────────────────────────────────────────────────
+    const replyText = this.buildReply(
+      savedSummaries,
+      pendingSummaries,
+      savedIds.length,
+      pendingIds.length,
+    );
     await this.sendReply(data.from, replyText);
   }
 
-  // ─── Category Resolution ──────────────────────────────────────────────────
+  // ─── Reply builders ────────────────────────────────────────────────────────
+
+  private buildReply(
+    savedSummaries: string[],
+    pendingSummaries: string[],
+    savedCount: number,
+    pendingCount: number,
+  ): string {
+    const lines: string[] = [];
+
+    if (savedCount > 0 && pendingCount === 0) {
+      // Semua langsung tersimpan
+      if (savedCount === 1) {
+        lines.push("Transaksi tercatat!", "", ...savedSummaries);
+      } else {
+        lines.push(`${savedCount} transaksi tercatat!`, "");
+        savedSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+      }
+    } else if (pendingCount > 0 && savedCount === 0) {
+      // Semua perlu konfirmasi
+      lines.push(
+        "Aku kurang yakin dengan transaksi ini. Konfirmasi dulu ya:",
+        "",
+      );
+      pendingSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+      lines.push("", "Balas *ya* untuk simpan, *tidak* untuk batalkan.");
+    } else {
+      // Campuran: sebagian tersimpan, sebagian perlu konfirmasi
+      if (savedCount > 0) {
+        lines.push(`${savedCount} transaksi tersimpan otomatis:`);
+        savedSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+        lines.push("");
+      }
+      lines.push("Transaksi berikut perlu konfirmasi (aku kurang yakin):", "");
+      pendingSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+      lines.push("", "Balas *ya* untuk simpan, *tidak* untuk batalkan.");
+    }
+
+    return lines.join("\n");
+  }
+
+  private buildTransactionSummaryLine(extracted: AiExtractionOutput): string {
+    const typeLabel = getTransactionTypeLabel(extracted.type);
+    const amountStr = formatCurrency(
+      extracted.total_amount,
+      extracted.currency,
+    );
+    const itemName = extracted.name ?? "Transaksi";
+    const parts = [`[${typeLabel}] ${itemName} ${amountStr}`];
+    if (extracted.merchant) parts.push(`di ${extracted.merchant}`);
+    if (extracted.payment_method) parts.push(`via ${extracted.payment_method}`);
+    if (extracted.tags && extracted.tags.length > 0) {
+      parts.push(`(${extracted.tags.map((t) => `#${t.trim()}`).join(", ")})`);
+    }
+    return parts.join(" ");
+  }
+
+  // ─── Category Resolution ───────────────────────────────────────────────────
   private async resolveCategory(
     db: ReturnType<typeof getDb>,
     categorySlug: string,
     transactionType: string,
     userId: string,
   ): Promise<string | null> {
-    // Try exact slug match: user-specific rows first, then global (userId IS NULL)
     const rows = await db
       .select({
         id: transactionCategories.id,
@@ -209,11 +440,9 @@ export class AiExtractionProcessor extends BaseProcessor {
       )
       .limit(2);
 
-    // Prefer user-specific match over global
     const found = rows.find((r) => r.userId === userId) ?? rows[0];
     if (found) return found.id;
 
-    // Fallback to "other_*" category (global)
     const fallbackSlug =
       transactionType === "income"
         ? "other_income"
@@ -235,20 +464,58 @@ export class AiExtractionProcessor extends BaseProcessor {
     return fallback?.id ?? null;
   }
 
-  // ─── Payment Method Resolution ────────────────────────────────────────────
-  /**
-   * Returns:
-   * - string  > resolved paymentMethodId
-   * - null    > no payment method specified (OK to save null)
-   * - false   > resolution failed, user was notified, abort transaction
-   */
+  // ─── Tags Resolution ───────────────────────────────────────────────────────
+  private async resolveTags(
+    db: ReturnType<typeof getDb>,
+    tagsFromAi: string[],
+    userId: string,
+  ): Promise<string[]> {
+    if (!tagsFromAi || tagsFromAi.length === 0) return [];
+
+    const tagIds: string[] = [];
+    for (const rawTag of tagsFromAi) {
+      const cleanTag = rawTag.trim();
+      if (!cleanTag) continue;
+
+      // Cari tag (case-insensitive) milik user ini
+      const [existingTag] = await db
+        .select({ id: transactionTags.id })
+        .from(transactionTags)
+        .where(
+          and(
+            eq(transactionTags.userId, userId),
+            ilike(transactionTags.name, cleanTag),
+          ),
+        )
+        .limit(1);
+
+      if (existingTag) {
+        tagIds.push(existingTag.id);
+      } else {
+        // Jika belum ada, auto-create
+        const [newTag] = await db
+          .insert(transactionTags)
+          .values({
+            userId,
+            name: toTitleCase(cleanTag),
+            // Opsional: kita bisa pasang logic random color di masa depan, saat ini null
+          })
+          .returning({ id: transactionTags.id });
+
+        tagIds.push(newTag.id);
+      }
+    }
+
+    return tagIds;
+  }
+
+  // ─── Payment Method Resolution ─────────────────────────────────────────────
   private async resolvePaymentMethod(
     db: ReturnType<typeof getDb>,
     nameFromAi: string,
     userId: string,
     chatId: string,
   ): Promise<string | null | false> {
-    // Fetch all available payment methods (global + user-specific)
     const allMethods = await db
       .select({ id: paymentMethods.id, name: paymentMethods.name })
       .from(paymentMethods)
@@ -258,11 +525,9 @@ export class AiExtractionProcessor extends BaseProcessor {
 
     const lower = nameFromAi.toLowerCase().trim();
 
-    // 1. Exact case-insensitive match
     let match = allMethods.find((m) => m.name.toLowerCase() === lower);
     if (match) return match.id;
 
-    // 2. Partial / contains match (both directions)
     match = allMethods.find(
       (m) =>
         m.name.toLowerCase().includes(lower) ||
@@ -276,7 +541,6 @@ export class AiExtractionProcessor extends BaseProcessor {
       return match.id;
     }
 
-    // 3. AI disambiguation — ask cheap model to pick from the list
     this.logger.info(
       { nameFromAi },
       "No fuzzy match, asking AI to disambiguate payment method",
@@ -295,7 +559,6 @@ export class AiExtractionProcessor extends BaseProcessor {
       }
     }
 
-    // 4. Completely unresolved > send rejection to user
     this.logger.warn(
       { nameFromAi },
       "Payment method not resolved, notifying user",
@@ -309,7 +572,6 @@ export class AiExtractionProcessor extends BaseProcessor {
     return false;
   }
 
-  /** Call a cheap AI model to pick the closest payment method from a list. */
   private async askAiForPaymentMethod(
     nameFromAi: string,
     availableList: string,
@@ -333,7 +595,7 @@ export class AiExtractionProcessor extends BaseProcessor {
             },
           ],
           temperature: 0,
-          max_tokens: 30,
+          max_tokens: 32,
         },
         {
           headers: {
@@ -352,7 +614,50 @@ export class AiExtractionProcessor extends BaseProcessor {
     }
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+  private async handleExtractionFailure(
+    db: ReturnType<typeof getDb>,
+    rawMessageId: string,
+    error: string,
+    chatId: string,
+  ): Promise<void> {
+    // 1. Fetch raw_message to check for storagePath
+    const [msg] = await db
+      .select({ storagePath: rawMessages.storagePath })
+      .from(rawMessages)
+      .where(eq(rawMessages.id, rawMessageId))
+      .limit(1);
+
+    // 2. Delete media if exists (Garbage Collection)
+    if (msg?.storagePath) {
+      await this.storageProvider.deleteMedia(msg.storagePath);
+
+      // Update DB to nullify storagePath
+      await db
+        .update(rawMessages)
+        .set({ storagePath: null })
+        .where(eq(rawMessages.id, rawMessageId));
+
+      this.logger.info(
+        { rawMessageId, storagePath: msg.storagePath },
+        "Garbage collected irrelevant media file",
+      );
+    }
+
+    // 3. Mark failed
+    await db
+      .update(rawMessages)
+      .set({
+        processingStatus: "failed",
+        processingError: error,
+        processedAt: new Date(),
+      })
+      .where(eq(rawMessages.id, rawMessageId));
+
+    // 4. Send reply
+    await this.sendReply(chatId, this.getExtractionErrorReply());
+  }
+
   private async markFailed(
     db: ReturnType<typeof getDb>,
     rawMessageId: string,
@@ -373,44 +678,6 @@ export class AiExtractionProcessor extends BaseProcessor {
       chatId,
       text,
     });
-  }
-
-  private buildConfirmationReply(
-    extracted: AiExtractionOutput,
-    transactionId: string,
-  ): string {
-    const typeLabel =
-      extracted.type === "expense"
-        ? "Pengeluaran"
-        : extracted.type === "income"
-          ? "Pemasukan"
-          : "Transfer";
-
-    const amount = new Intl.NumberFormat("id-ID").format(extracted.amount);
-    const total = new Intl.NumberFormat("id-ID").format(extracted.total_amount);
-    const feeStr =
-      extracted.fee > 0
-        ? `\n• Fee: Rp ${new Intl.NumberFormat("id-ID").format(extracted.fee)}${extracted.fee_note ? ` _(${extracted.fee_note})_` : ""}`
-        : "";
-
-    const lines = [
-      `Transaksi tercatat!`,
-      ``,
-      `[${typeLabel}]`,
-      `• Jumlah: Rp ${amount}${feeStr}`,
-      extracted.fee > 0 ? `• Total: Rp ${total}` : null,
-      `• Kategori: ${extracted.category}`,
-      extracted.payment_method ? `• Metode: ${extracted.payment_method}` : null,
-      extracted.to_payment_method
-        ? `• Tujuan: ${extracted.to_payment_method}`
-        : null,
-      extracted.merchant ? `• Merchant: ${extracted.merchant}` : null,
-      extracted.notes ? `• Catatan: ${extracted.notes}` : null,
-      ``,
-      `Waktu: ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}`,
-    ];
-
-    return lines.filter((l) => l !== null).join("\n");
   }
 
   private getExtractionErrorReply(): string {

@@ -10,6 +10,8 @@ export enum MessageIntent {
   COMMAND = "COMMAND", // "hapus terakhir", "bantuan"
   GREETING = "GREETING", // "halo", "pagi"
   OUT_OF_SCOPE = "OUT_OF_SCOPE", // "cuaca hari ini?", "buat puisi"
+  CONFIRMATION_REPLY = "CONFIRMATION_REPLY", // "ya", "oke", "tidak", "batal"
+  SETUP_RECURRING = "SETUP_RECURRING", // "ingetin bayar listrik tanggal 20"
 }
 
 export interface IntentResult {
@@ -40,11 +42,13 @@ Klasifikasikan pesan berikut ke salah satu intent:
 - QUERY_REPORT: user bertanya tentang keuangannya (berapa, rangkum, lihat, cek saldo)
 - COMMAND: perintah eksplisit (hapus, laporan, kategori, bantuan, help)
 - GREETING: sapaan biasa (halo, hai, pagi, selamat)
+- CONFIRMATION_REPLY: jawaban ya/tidak untuk konfirmasi transaksi (ya, oke, tidak, batal, benar, salah)
+- SETUP_RECURRING: setup pengingat tagihan berulang (ingetin, reminder, tagihan setiap, bayar rutin)
 - OUT_OF_SCOPE: apapun di luar keuangan pribadi
 
 Return HANYA JSON:
 {
-  "intent": "LOG_TRANSACTION" | "QUERY_REPORT" | "COMMAND" | "GREETING" | "OUT_OF_SCOPE",
+  "intent": "LOG_TRANSACTION" | "QUERY_REPORT" | "COMMAND" | "GREETING" | "CONFIRMATION_REPLY" | "SETUP_RECURRING" | "OUT_OF_SCOPE",
   "confidence": 0.0-1.0,
   "reason": "alasan singkat dalam Bahasa Indonesia",
   "extracted_query": "string atau null (hanya untuk QUERY_REPORT: versi bersih query)",
@@ -63,6 +67,8 @@ export class FinanceGuardrail {
     timeout: 10_000,
   });
 
+  private readonly triggerPrefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
+
   async detectIntent(message: string): Promise<IntentResult> {
     logger.debug({ message }, "Detecting intent");
 
@@ -77,7 +83,7 @@ export class FinanceGuardrail {
           { role: "user", content: message },
         ],
         temperature: 0,
-        max_tokens: 150,
+        max_tokens: 168,
         response_format: { type: "json_object" },
       });
 
@@ -117,7 +123,7 @@ export class FinanceGuardrail {
       "• Catat pengeluaran, pemasukan, atau transfer\n" +
       "• Jawab pertanyaan tentang keuanganmu\n" +
       "• Kirim laporan harian/mingguan/bulanan\n\n" +
-      "Kirim /bantuan untuk melihat panduan lengkap."
+      `Kirim ${this.triggerPrefix}bantuan untuk melihat panduan lengkap.`
     );
   }
 
@@ -125,17 +131,83 @@ export class FinanceGuardrail {
   private detectCommandFastPath(message: string): IntentResult | null {
     const lower = message.toLowerCase().trim();
 
+    // ── Confirmation replies (highest priority) ───────────────────────────────
+    const confirmPositive = [
+      "ya",
+      "iya",
+      "oke",
+      "ok",
+      "benar",
+      "betul",
+      "yes",
+      "yep",
+      "simpan",
+      "konfirmasi",
+      "yoi",
+    ];
+    const confirmNegative = [
+      "tidak",
+      "enggak",
+      "gak",
+      "nggak",
+      "gk",
+      "batal",
+      "cancel",
+      "salah",
+      "no",
+      "nope",
+      "hapus saja",
+    ];
+
+    if (confirmPositive.includes(lower)) {
+      return {
+        intent: MessageIntent.CONFIRMATION_REPLY,
+        confidence: 1.0,
+        reason: "Positive confirmation reply",
+        extractedQuery: "yes",
+      };
+    }
+    if (confirmNegative.includes(lower)) {
+      return {
+        intent: MessageIntent.CONFIRMATION_REPLY,
+        confidence: 1.0,
+        reason: "Negative confirmation reply",
+        extractedQuery: "no",
+      };
+    }
+
+    // ── Recurring setup fast-path ─────────────────────────────────────────────
+    const recurringKeywords = [
+      "ingetin",
+      "pengingat",
+      "ingatkan",
+      "reminder",
+      "tagihan setiap",
+      "bayar rutin",
+      "bayar setiap",
+    ];
+    if (
+      recurringKeywords.some((k) => lower.startsWith(k) || lower.includes(k))
+    ) {
+      return {
+        intent: MessageIntent.SETUP_RECURRING,
+        confidence: 0.95,
+        reason: "Recurring bill setup detected",
+      };
+    }
+
+    // ── Explicit commands ─────────────────────────────────────────────────────
     const commands = [
-      "/laporan",
-      "/report",
-      "/hapus",
-      "/delete",
-      "/kategori",
-      "/category",
-      "/bantuan",
-      "/help",
-      "/tagihan",
-      "/summary",
+      this.triggerPrefix + "laporan",
+      this.triggerPrefix + "report",
+      this.triggerPrefix + "hapus",
+      this.triggerPrefix + "delete",
+      this.triggerPrefix + "kategori",
+      this.triggerPrefix + "category",
+      this.triggerPrefix + "bantuan",
+      this.triggerPrefix + "help",
+      this.triggerPrefix + "tagihan",
+      this.triggerPrefix + "summary",
     ];
 
     if (commands.some((cmd) => lower.startsWith(cmd))) {

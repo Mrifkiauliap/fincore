@@ -28,6 +28,8 @@ export const transactions = pgTable(
   "transactions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    /** Judul/nama singkat transaksi, contoh: 'Isi Bensin', 'Gaji Mei' */
+    name: text("name").notNull(),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

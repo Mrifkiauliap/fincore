@@ -42,6 +42,7 @@ export type OcrCompletedEvent = z.infer<typeof OcrCompletedEventSchema>;
 export const TransactionExtractedEventSchema = z.object({
   rawMessageId: z.string(),
   userId: z.string(),
+  name: z.string(),
   type: z.nativeEnum(TransactionType),
   amount: z.number(),
   currency: z.string().default("IDR"),
@@ -80,18 +81,26 @@ export type AiExtractionInput = z.infer<typeof AiExtractionInputSchema>;
 export const AiExtractionOutputSchema = z
   .object({
     type: z.nativeEnum(TransactionType),
+    /** Nama/judul singkat transaksi (contoh: "Isi Bensin", "Makan Siang") */
+    name: z.string().default("Transaksi"),
     amount: z.number().positive(),
     /** Biaya admin / transfer fee. Default 0 jika tidak disebutkan user. */
-    fee: z.number().min(0).default(0),
+    fee: z
+      .number()
+      .nullable()
+      .optional()
+      .transform((v) => v ?? 0),
     /**
      * amount + fee. AI harus menghitung ini.
      * Jika fee tidak ada, total_amount = amount.
      */
-    total_amount: z.number().min(0),
+    total_amount: z.number().nullable().optional(),
     currency: z.string().default("IDR"),
     category: z.string(),
     merchant: z.string().nullable().optional(),
     location: z.string().nullable().optional(),
+    /** Array string tag (contoh: ["kantor", "liburan"]) */
+    tags: z.array(z.string()).default([]),
     payment_method: z.string().nullable().optional(),
     /**
      * Nama metode tujuan untuk transfer (contoh: "Bank Jago", "OVO").
@@ -104,6 +113,10 @@ export const AiExtractionOutputSchema = z
     notes: z.string().nullable().optional(),
     confidence_score: z.number().min(0).max(1),
   })
+  .transform((data) => ({
+    ...data,
+    total_amount: data.total_amount ?? data.amount + data.fee,
+  }))
   .refine((data) => data.total_amount === data.amount + data.fee, {
     message: "total_amount harus sama dengan amount + fee",
     path: ["total_amount"],
@@ -117,6 +130,15 @@ export const AiExtractionOutputSchema = z
     },
   );
 export type AiExtractionOutput = z.infer<typeof AiExtractionOutputSchema>;
+
+// ─── AI Multi-Extraction Output (for single or multi-transaction messages) ────
+export const AiMultiExtractionOutputSchema = z.object({
+  transactions: z.array(AiExtractionOutputSchema),
+  overall_confidence: z.number().min(0).max(1),
+});
+export type AiMultiExtractionOutput = z.infer<
+  typeof AiMultiExtractionOutputSchema
+>;
 
 // ─── Processing Status Update ─────────────────────────────────────────────────
 export const ProcessingStatusUpdateSchema = z.object({

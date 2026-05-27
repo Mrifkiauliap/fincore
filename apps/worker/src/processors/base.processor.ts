@@ -1,3 +1,4 @@
+import getConfig from "@fincore/config";
 import { createLogger, Logger } from "@fincore/logger";
 import { createValkeyConnection } from "@fincore/queue";
 import { OnModuleDestroy, OnModuleInit } from "@nestjs/common";
@@ -26,7 +27,7 @@ export abstract class BaseProcessor implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     const opts: WorkerOptions = {
       connection: createValkeyConnection(),
-      concurrency: Number(process.env.WORKER_CONCURRENCY ?? 5),
+      concurrency: Number(getConfig("WORKER_CONCURRENCY") ?? 5),
       ...this.workerOptions(),
     };
 

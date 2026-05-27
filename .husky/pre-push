@@ -1,0 +1,14 @@
+#!/bin/sh
+# Run TypeScript type-check across all packages before push
+# This prevents type errors from being pushed to the remote
+echo "Running TypeScript type check..."
+pnpm exec tsc --noEmit -p tsconfig.json
+
+# Check exit code
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "TypeScript type check failed. Fix the errors above before pushing."
+  exit 1
+fi
+
+echo "Type check passed!"

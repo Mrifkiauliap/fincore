@@ -1,8 +1,21 @@
 import type { AiExtractionOutput } from "@fincore/contracts";
 
+export interface ExtractionContext {
+  categories: {
+    expense: string[];
+    income: string[];
+    transfer: string[];
+  };
+  paymentMethods: string[];
+  tags: string[];
+}
+
 // ─── AI Provider Interface ────────────────────────────────────────────────────
 export interface IAiProvider {
-  extractTransaction(content: string): Promise<AiExtractionOutput>;
+  extractTransaction(
+    content: string,
+    context?: ExtractionContext,
+  ): Promise<AiExtractionOutput[]>;
   generateSummary(data: unknown): Promise<string>;
 }
 

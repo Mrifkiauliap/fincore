@@ -31,8 +31,8 @@ async function bootstrap() {
   const port = getConfig("APP_PORT");
   await app.listen(port, "0.0.0.0");
 
-  logger.info(`🚀 API running on http://localhost:${port}`);
-  logger.info(`📚 Swagger: http://localhost:${port}/docs`);
+  logger.info(`API running on http://localhost:${port}`);
+  logger.info(`Swagger: http://localhost:${port}/docs`);
 }
 
 bootstrap().catch((err) => {

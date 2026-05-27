@@ -13,6 +13,7 @@ export const messageTypeEnum = pgEnum("message_type", [
 export const processingStatusEnum = pgEnum("processing_status", [
   "pending",
   "processing",
+  "pending_confirmation",
   "done",
   "failed",
   "skipped",
