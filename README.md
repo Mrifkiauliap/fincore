@@ -15,7 +15,7 @@
 | ORM         | Drizzle ORM                 |
 | Validation  | Zod                         |
 | Logging     | Pino                        |
-| WhatsApp    | WAHA                        |
+| WhatsApp    | Sumopod (Waha)              |
 | AI Provider | Sumopod                     |
 | Voice       | Groq Whisper                |
 | Vision/OCR  | Gemini 1.5 Flash            |
@@ -44,7 +44,7 @@ FinCore/
 │
 └── infrastructure/
     ├── docker/
-    ├── nginx/
+    ├── cloudflare/
     └── monitoring/
 ```
 
@@ -77,7 +77,7 @@ pnpm install
 ### 3. Start Infrastructure
 
 ```bash
-# Start PostgreSQL, Valkey, WAHA, Bull Board
+# Start PostgreSQL, Valkey, Bull Board, Cloudflare Tunnel
 pnpm docker:up
 
 # Cek status
@@ -117,7 +117,6 @@ pnpm dev:sender
 | ----------- | ---- | -------------------------- |
 | API         | 3000 | http://localhost:3000      |
 | API Swagger | 3000 | http://localhost:3000/docs |
-| WAHA        | 3001 | http://localhost:3001      |
 | Bull Board  | 3010 | http://localhost:3010      |
 | Worker      | 3002 | internal only              |
 | Sender      | 3003 | internal only              |
@@ -134,7 +133,7 @@ Wajib diisi:
 
 - `DATABASE_URL`
 - `VALKEY_URL`
-- `WAHA_API_KEY`
+- `CLOUDFLARE_TUNNEL_TOKEN`
 - `SUMOPOD_API_KEY` + `SUMOPOD_BASE_URL`
 - `GROQ_API_KEY` (untuk voice transcription)
 - `GEMINI_API_KEY` (untuk OCR/vision)
@@ -144,10 +143,10 @@ Wajib diisi:
 ## Message Flow
 
 ```
-WhatsApp → WAHA → Webhook (api) → Save Raw → Enqueue → Worker
-                                                          ├── Voice → Groq Whisper → AI Extraction
-                                                          ├── Image → Gemini Vision → AI Extraction
-                                                          └── Text → AI Extraction → Save Transaction
-                                                                                          ↓
-                                                                               Sender → WhatsApp Reply
+WhatsApp → Sumopod (Waha)               → Cloudflare Tunnel → Webhook (api) → Save Raw → Enqueue → Worker
+                                                                            ├── Voice → Groq Whisper → AI Extraction
+                                                                            ├── Image → Gemini Vision → AI Extraction
+                                                                            └── Text → AI Extraction → Save Transaction
+                                                                                                          ↓
+                                                                                               Sender → WhatsApp Reply
 ```
