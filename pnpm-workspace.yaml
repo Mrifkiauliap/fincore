@@ -8,3 +8,15 @@ allowBuilds:
   sharp: true
 minimumReleaseAgeExclude:
   - dayjs@1.11.21
+
+supportedArchitectures:
+  os:
+    - current
+    - linux
+    - win32
+  cpu:
+    - x64
+    - arm64
+  libc:
+    - glibc
+    - musl
