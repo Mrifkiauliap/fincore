@@ -45,8 +45,8 @@ services:
     image: deadly0/bull-board
     container_name: fincore-bull-board
     restart: unless-stopped
-    # ports:
-    #   - "3010:3000"
+    ports:
+      - "3015:3000"
     networks:
       - fincore_net
     environment:
@@ -79,8 +79,8 @@ services:
       dockerfile: infrastructure/docker/api.Dockerfile
     container_name: fincore-api
     restart: unless-stopped
-    ports:
-      - "3015:3000"
+    # ports:
+    # - "3015:3000"
     env_file: .env
     depends_on:
       postgres:
