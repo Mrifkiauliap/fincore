@@ -13,8 +13,8 @@ FROM node:22-alpine AS installer
 RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable pnpm
+# Install pnpm and node-gyp for sharp compilation
+RUN corepack enable pnpm && npm install -g node-gyp
 
 # First install dependencies (as they change less often)
 COPY .gitignore .gitignore

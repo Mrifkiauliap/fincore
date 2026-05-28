@@ -10,11 +10,11 @@ RUN turbo prune --scope=@fincore/api --docker
 
 # Stage 2: Install dependencies and build
 FROM node:22-alpine AS installer
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable pnpm
+# Install pnpm and node-gyp
+RUN corepack enable pnpm && npm install -g node-gyp
 
 # First install dependencies (as they change less often)
 COPY .gitignore .gitignore
