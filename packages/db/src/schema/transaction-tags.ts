@@ -20,7 +20,6 @@ export const transactionTags = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    /** Hex color untuk UI */
     color: text("color"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

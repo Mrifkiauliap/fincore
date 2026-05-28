@@ -4,7 +4,7 @@ import { Module } from "@nestjs/common";
 
 @Module({
   imports: [
-    // DatabaseModule is @Global() — provides DRIZZLE token to all modules
+    // DatabaseModule is @Global() - provides DRIZZLE token to all modules
     DatabaseModule,
     WebhookModule,
     // TransactionModule,

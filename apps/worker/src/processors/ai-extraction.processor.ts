@@ -124,9 +124,16 @@ export class AiExtractionProcessor extends BaseProcessor {
     // ── 2. Extract via AI (returns array) ─────────────────────────────────────
     let extractedList: AiExtractionOutput[];
     let rawResponse = "";
+    let aiLatencyMs = 0;
+    let aiUsage: { inputTokens: number; outputTokens: number } | undefined;
     try {
-      extractedList = await this.ai.extractTransaction(data.content, context);
-      rawResponse = JSON.stringify(extractedList);
+      const aiStart = Date.now();
+      const aiResult = await this.ai.extractTransaction(data.content, context);
+      aiLatencyMs = Date.now() - aiStart;
+
+      extractedList = aiResult.parsed;
+      rawResponse = aiResult.raw;
+      aiUsage = aiResult.usage;
 
       const durationMs = Date.now() - start;
       await db.insert(aiProcessingLogs).values({
@@ -192,7 +199,10 @@ export class AiExtractionProcessor extends BaseProcessor {
       response: rawResponse,
       parsedOutput: extractedList as any,
       provider: "sumopod",
-      model: "gpt-4o-mini",
+      model: getConfig("AI_EXTRACTION_MODEL"),
+      inputTokens: aiUsage?.inputTokens,
+      outputTokens: aiUsage?.outputTokens,
+      latencyMs: aiLatencyMs,
       isValid: true,
     });
 
@@ -201,6 +211,7 @@ export class AiExtractionProcessor extends BaseProcessor {
     const pendingIds: string[] = [];
     const savedSummaries: string[] = [];
     const pendingSummaries: string[] = [];
+    const pendingReasons: ("low_confidence" | "suspicious_amount")[] = [];
 
     for (const extracted of extractedList) {
       if (extracted.confidence_score < CONFIDENCE_MIN) {
@@ -225,18 +236,8 @@ export class AiExtractionProcessor extends BaseProcessor {
             db,
             extracted.payment_method,
             data.userId,
-            data.from,
           )
         : null;
-
-      if (extracted.payment_method && paymentMethodId === false) {
-        await this.markFailed(
-          db,
-          data.rawMessageId,
-          `Payment method not resolved: ${extracted.payment_method}`,
-        );
-        return;
-      }
 
       const toPaymentMethodId =
         extracted.type === "transfer" && extracted.to_payment_method
@@ -244,7 +245,6 @@ export class AiExtractionProcessor extends BaseProcessor {
               db,
               extracted.to_payment_method,
               data.userId,
-              data.from,
             )
           : null;
 
@@ -256,8 +256,36 @@ export class AiExtractionProcessor extends BaseProcessor {
       );
 
       // ── 4d. Determine if needs confirmation ────────────────────────────────
-      const needsConfirmation = extracted.confidence_score < CONFIDENCE_AUTO;
-      const transactionDate = new Date();
+      // Paksa konfirmasi jika nominal terlalu kecil dari sumber gambar (kemungkinan OCR salah baca ribuan)
+      const isSuspiciouslySmallFromOcr =
+        data.sourceType === MessageType.IMAGE && extracted.total_amount < 1000;
+
+      // Paksa konfirmasi jika metode pembayaran tidak ada
+      const isMissingPaymentMethod = !paymentMethodId;
+
+      const needsConfirmation =
+        extracted.confidence_score < CONFIDENCE_AUTO ||
+        isSuspiciouslySmallFromOcr ||
+        isMissingPaymentMethod;
+
+      const confirmationReason:
+        | "low_confidence"
+        | "suspicious_amount"
+        | "missing_payment_method"
+        | null = isSuspiciouslySmallFromOcr
+        ? "suspicious_amount"
+        : isMissingPaymentMethod
+          ? "missing_payment_method"
+          : needsConfirmation
+            ? "low_confidence"
+            : null;
+      let transactionDate = new Date();
+      if (extracted.transaction_date) {
+        const parsedDate = new Date(extracted.transaction_date);
+        if (!isNaN(parsedDate.getTime())) {
+          transactionDate = parsedDate;
+        }
+      }
 
       const [transaction] = await db
         .insert(transactions)
@@ -315,9 +343,34 @@ export class AiExtractionProcessor extends BaseProcessor {
       if (needsConfirmation) {
         pendingIds.push(transaction.id);
         pendingSummaries.push(summaryLine);
+        if (confirmationReason === "suspicious_amount") {
+          pendingReasons.push("suspicious_amount");
+        } else {
+          pendingReasons.push("low_confidence");
+        }
       } else {
         savedIds.push(transaction.id);
         savedSummaries.push(summaryLine);
+
+        // Queue for event publishing (Finance Core webhook)
+        await enqueue(
+          QueueName.EVENT_PUBLISHING,
+          JobName.PUBLISH_FINANCIAL_EVENT,
+          {
+            transactionId: transaction.id,
+            eventType: "transaction.created",
+          },
+        );
+
+        // Queue for budget check if expense
+        if (extracted.type === "expense" && categoryId) {
+          await enqueue(QueueName.BUDGET_CHECK, JobName.CHECK_BUDGET, {
+            userId: data.userId,
+            categoryId,
+            transactionId: transaction.id,
+            amount: extracted.total_amount,
+          });
+        }
       }
     }
 
@@ -351,6 +404,11 @@ export class AiExtractionProcessor extends BaseProcessor {
       pendingSummaries,
       savedIds.length,
       pendingIds.length,
+      pendingReasons as (
+        | "low_confidence"
+        | "suspicious_amount"
+        | "missing_payment_method"
+      )[],
     );
     await this.sendReply(data.from, replyText);
   }
@@ -362,33 +420,44 @@ export class AiExtractionProcessor extends BaseProcessor {
     pendingSummaries: string[],
     savedCount: number,
     pendingCount: number,
+    pendingReasons: (
+      | "low_confidence"
+      | "suspicious_amount"
+      | "missing_payment_method"
+    )[] = [],
   ): string {
     const lines: string[] = [];
 
+    const hasSuspicious = pendingReasons.includes("suspicious_amount");
+    const hasMissingMethod = pendingReasons.includes("missing_payment_method");
+
+    let confirmationNote = "Perlu konfirmasi dulu:";
+    if (hasSuspicious) {
+      confirmationNote =
+        "Nominal dari gambar tampak tidak wajar, mohon konfirmasi:";
+    } else if (hasMissingMethod) {
+      confirmationNote =
+        "Metode pembayaran belum diisi, mohon lengkapi (balas dengan nama metode pembayarannya) atau konfirmasi:";
+    }
+
     if (savedCount > 0 && pendingCount === 0) {
-      // Semua langsung tersimpan
       if (savedCount === 1) {
-        lines.push("Transaksi tercatat!", "", ...savedSummaries);
+        lines.push("Tercatat.", "", ...savedSummaries);
       } else {
-        lines.push(`${savedCount} transaksi tercatat!`, "");
+        lines.push(`${savedCount} transaksi tercatat:`, "");
         savedSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
       }
     } else if (pendingCount > 0 && savedCount === 0) {
-      // Semua perlu konfirmasi
-      lines.push(
-        "Aku kurang yakin dengan transaksi ini. Konfirmasi dulu ya:",
-        "",
-      );
+      lines.push(confirmationNote, "");
       pendingSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
       lines.push("", "Balas *ya* untuk simpan, *tidak* untuk batalkan.");
     } else {
-      // Campuran: sebagian tersimpan, sebagian perlu konfirmasi
       if (savedCount > 0) {
-        lines.push(`${savedCount} transaksi tersimpan otomatis:`);
+        lines.push(`${savedCount} transaksi tersimpan:`);
         savedSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
         lines.push("");
       }
-      lines.push("Transaksi berikut perlu konfirmasi (aku kurang yakin):", "");
+      lines.push(confirmationNote, "");
       pendingSummaries.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
       lines.push("", "Balas *ya* untuk simpan, *tidak* untuk batalkan.");
     }
@@ -403,13 +472,21 @@ export class AiExtractionProcessor extends BaseProcessor {
       extracted.currency,
     );
     const itemName = extracted.name ?? "Transaksi";
-    const parts = [`[${typeLabel}] ${itemName} ${amountStr}`];
-    if (extracted.merchant) parts.push(`di ${extracted.merchant}`);
-    if (extracted.payment_method) parts.push(`via ${extracted.payment_method}`);
+
+    // Format: *Nama* - Rp X.XXX
+    // Detail baris: Tipe · Merchant · Metode · #tag
+    let line = `*${itemName}* - ${amountStr}`;
+
+    const details: string[] = [typeLabel];
+    if (extracted.merchant) details.push(extracted.merchant);
+    if (extracted.payment_method)
+      details.push(`via ${extracted.payment_method}`);
     if (extracted.tags && extracted.tags.length > 0) {
-      parts.push(`(${extracted.tags.map((t) => `#${t.trim()}`).join(", ")})`);
+      details.push(extracted.tags.map((t) => `#${t.trim()}`).join(" "));
     }
-    return parts.join(" ");
+
+    line += `\n_${details.join(" · ")}_`;
+    return line;
   }
 
   // ─── Category Resolution ───────────────────────────────────────────────────
@@ -514,8 +591,7 @@ export class AiExtractionProcessor extends BaseProcessor {
     db: ReturnType<typeof getDb>,
     nameFromAi: string,
     userId: string,
-    chatId: string,
-  ): Promise<string | null | false> {
+  ): Promise<string | null> {
     const allMethods = await db
       .select({ id: paymentMethods.id, name: paymentMethods.name })
       .from(paymentMethods)
@@ -561,15 +637,9 @@ export class AiExtractionProcessor extends BaseProcessor {
 
     this.logger.warn(
       { nameFromAi },
-      "Payment method not resolved, notifying user",
+      "Payment method not resolved by AI either",
     );
-    await this.sendReply(
-      chatId,
-      `Maaf, metode pembayaran *"${nameFromAi}"* tidak ditemukan.\n\n` +
-        `Metode yang tersedia:\n${allMethods.map((m) => `• ${m.name}`).join("\n")}\n\n` +
-        `Silakan kirim ulang dengan metode pembayaran yang tepat.`,
-    );
-    return false;
+    return null;
   }
 
   private async askAiForPaymentMethod(

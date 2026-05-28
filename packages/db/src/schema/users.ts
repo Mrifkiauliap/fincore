@@ -15,11 +15,14 @@ export const users = pgTable(
   "users",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** Nomor WhatsApp pengguna, format: 628xxxxxxxxxx */
     phone: text("phone").notNull().unique(),
     name: text("name"),
     timezone: text("timezone").default("Asia/Jakarta"),
     isActive: boolean("is_active").default(true).notNull(),
+    onboardedAt: timestamp("onboarded_at"),
+    reportSchedule: text("report_schedule").default("monthly"),
+    reportTime: text("report_time").default("07:00"),
+    preferredCurrency: text("preferred_currency").default("IDR"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

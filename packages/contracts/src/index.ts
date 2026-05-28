@@ -81,36 +81,25 @@ export type AiExtractionInput = z.infer<typeof AiExtractionInputSchema>;
 export const AiExtractionOutputSchema = z
   .object({
     type: z.nativeEnum(TransactionType),
-    /** Nama/judul singkat transaksi (contoh: "Isi Bensin", "Makan Siang") */
     name: z.string().default("Transaksi"),
     amount: z.number().positive(),
-    /** Biaya admin / transfer fee. Default 0 jika tidak disebutkan user. */
     fee: z
       .number()
       .nullable()
       .optional()
       .transform((v) => v ?? 0),
-    /**
-     * amount + fee. AI harus menghitung ini.
-     * Jika fee tidak ada, total_amount = amount.
-     */
     total_amount: z.number().nullable().optional(),
     currency: z.string().default("IDR"),
     category: z.string(),
     merchant: z.string().nullable().optional(),
     location: z.string().nullable().optional(),
-    /** Array string tag (contoh: ["kantor", "liburan"]) */
     tags: z.array(z.string()).default([]),
     payment_method: z.string().nullable().optional(),
-    /**
-     * Nama metode tujuan untuk transfer (contoh: "Bank Jago", "OVO").
-     * Null/undefined untuk expense dan income.
-     */
     to_payment_method: z.string().nullable().optional(),
-    /** Keterangan biaya tambahan, contoh: "biaya transfer beda bank". */
     fee_note: z.string().nullable().optional(),
     source_type: z.string(),
     notes: z.string().nullable().optional(),
+    transaction_date: z.string().nullable().optional(),
     confidence_score: z.number().min(0).max(1),
   })
   .transform((data) => ({
@@ -149,3 +138,85 @@ export const ProcessingStatusUpdateSchema = z.object({
 export type ProcessingStatusUpdate = z.infer<
   typeof ProcessingStatusUpdateSchema
 >;
+
+// ─── Financial Event (Event Publishing) ──────────────────────────────────────
+
+export type FinancialEventType =
+  | "transaction.created"
+  | "transaction.updated"
+  | "transaction.deleted";
+
+/**
+ * Kontrak event yang dikirimkan FinCore ke external consumers (Finance Core, dll).
+ *
+ * - `eventId` = `transactions.event_id` - public stable ID, bukan internal PK.
+ *   Consumers harus simpan ini untuk idempotency check.
+ * - `schemaVersion` di-bump jika ada breaking change di payload.
+ */
+export interface FinancialEvent {
+  /** = transactions.event_id. Public stable ID untuk idempotency. */
+  eventId: string;
+  eventType: FinancialEventType;
+  /** ISO 8601 timestamp kapan transaksi terjadi. */
+  occurredAt: string;
+  schemaVersion: "1.0";
+  source: {
+    system: "fincore";
+    userId: string;
+    rawMessageId: string | null;
+    ingestionMethod: "text" | "voice" | "image" | "document" | "video";
+    confidenceScore: number;
+    isAiGenerated: true;
+  };
+  payload: {
+    transactionId: string;
+    type: "expense" | "income" | "transfer";
+    amount: number;
+    fee: number;
+    totalAmount: number;
+    currency: string;
+    categorySlug: string | null;
+    merchant: string | null;
+    location: string | null;
+    paymentMethod: string | null;
+    toPaymentMethod: string | null;
+    transactionDate: string;
+    notes: string | null;
+    name: string | null;
+  };
+}
+
+// ─── Webhook Subscription Contract ───────────────────────────────────────────
+
+/**
+ * Runtime representasi satu webhook subscriber.
+ * Ini adalah view dari tabel `webhook_subscriptions` yang digunakan
+ * oleh EventPublisher dan WebhookRegistryService.
+ */
+export interface WebhookSubscriptionContract {
+  id: string;
+  name: string;
+  url: string;
+  secret: string;
+  /** ['*'] = subscribe semua events */
+  eventTypes: FinancialEventType[] | ["*"];
+  isActive: boolean;
+  timeoutMs: number;
+  maxRetries: number;
+  createdAt: Date;
+  lastTriggeredAt: Date | null;
+  lastResponseStatus: number | null;
+}
+
+/**
+ * Hasil delivery ke satu subscriber untuk satu event.
+ */
+export interface DeliveryResult {
+  subscriptionId: string;
+  subscriptionName: string;
+  success: boolean;
+  statusCode?: number;
+  durationMs: number;
+  error?: string;
+  attempt: number;
+}

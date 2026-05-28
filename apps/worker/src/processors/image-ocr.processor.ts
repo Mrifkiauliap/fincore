@@ -13,9 +13,9 @@ import sharp from "sharp";
 
 // ── File size limits ──────────────────────────────────────────────────────────
 const MB = 1024 * 1024;
-const IMAGE_COMPRESS_THRESHOLD = 2.5 * MB; // compress if > 2.5 MB
-const IMAGE_REJECT_THRESHOLD = 5 * MB; // reject if > 5 MB
-const PDF_REJECT_THRESHOLD = 10 * MB; // reject PDFs larger than 10 MB
+const IMAGE_COMPRESS_THRESHOLD = 2.5 * MB;
+const IMAGE_REJECT_THRESHOLD = 5 * MB;
+const PDF_REJECT_THRESHOLD = 10 * MB;
 
 interface ImageOcrJobData {
   rawMessageId: string;

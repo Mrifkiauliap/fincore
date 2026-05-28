@@ -9,7 +9,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@fincore/config": "workspace:^",
+    "@fincore/config": "workspace:*",
     "@fincore/logger": "workspace:*",
     "@fincore/shared": "workspace:*",
     "bullmq": "^5.77.3",

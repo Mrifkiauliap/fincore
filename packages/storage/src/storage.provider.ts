@@ -84,7 +84,7 @@ export class StorageProvider {
       "image/jpeg": "jpg",
       "image/png": "png",
       "image/webp": "webp",
-      "audio/ogg; codecs=opus": "oga", // WAHA specific for voice notes
+      "audio/ogg; codecs=opus": "oga",
       "audio/ogg": "ogg",
       "audio/mp4": "m4a",
       "audio/mpeg": "mp3",

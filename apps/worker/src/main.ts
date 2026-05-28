@@ -4,6 +4,9 @@ import { NestFactory } from "@nestjs/core";
 
 const logger = createLogger("worker");
 
+// Tambah limit listener karena kita punya banyak BullMQ worker processors
+process.setMaxListeners(30);
+
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(WorkerModule, {
     logger: false,
@@ -15,6 +18,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  logger.error({ err }, "Failed to start Worker");
+  console.error("Failed to start Worker:", err);
   process.exit(1);
 });

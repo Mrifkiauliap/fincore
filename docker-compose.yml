@@ -54,7 +54,7 @@ services:
       REDIS_PORT: 6379
       REDIS_USE_TLS: "false"
       BULL_VERSION: BULLMQ
-      QUEUE_NAMES: incoming-message;voice-transcription;image-ocr;ai-extraction;categorization;report-generation;wa-sender
+      QUEUE_NAMES: incoming-message;voice-transcription;image-ocr;ai-extraction;categorization;report-generation;wa-sender;confirmation;recurring-setup;recurring-reminder;event-publishing;monthly-report;budget-check;budget-command;transaction-command;custom-command;settings-command;budget-rollover
       # Optional: auth
       BULL_BOARD_USERNAME: ${BULL_BOARD_USERNAME:-admin}
       # BULL_BOARD_PASSWORD: ${BULL_BOARD_PASSWORD:-admin}

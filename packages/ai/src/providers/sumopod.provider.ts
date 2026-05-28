@@ -42,8 +42,14 @@ ${context.tags.join(", ")}`;
     }
   }
 
+  const todayStr = new Date().toLocaleString("id-ID", {
+    timeZone: "Asia/Jakarta",
+  });
+
   return `
 Kamu adalah sistem ekstraksi transaksi keuangan yang presisi untuk aplikasi FinCore.
+
+Konteks Waktu Saat Ini: ${todayStr} (WIB)
 
 Tugasmu: Ekstrak SEMUA transaksi keuangan dari pesan. Satu pesan bisa mengandung LEBIH DARI SATU transaksi.
 
@@ -59,6 +65,7 @@ Aturan:
 - Jika ada BEBERAPA transaksi dalam satu pesan, ekstrak SEMUA (yang memiliki nominal) dan masukkan ke dalam array transactions
 - name: Berikan judul singkat dan jelas untuk transaksi (misal: "Beli Shampo", "Isi Bensin", "Gaji Bulan Mei"). JANGAN gunakan nama panjang.
 - tags: Ekstrak kata-kata yang diawali dengan hashtag (#) atau dari konteks spesifik sebagai tags. Hasilkan array of string. Contoh kalimat: "Makan siang 50rb #kantor #lembur" -> ["kantor", "lembur"]. JANGAN sertakan simbol # di dalam string array. Jika tidak ada, return array kosong [].
+- transaction_date: Jika user menyebutkan waktu (contoh: "kemarin", "tadi pagi", "tanggal 10"), hitung dan format ke "YYYY-MM-DD HH:mm:ss". Jika tidak disebutkan, kembalikan null.
 ${categoriesText}
 ${paymentMethodsText}
 ${tagsText}
@@ -81,6 +88,7 @@ Format output JSON (SELALU array, bahkan untuk 1 transaksi):
       "fee_note": "keterangan biaya tambahan atau null",
       "source_type": "text|voice|image",
       "notes": "string atau null",
+      "transaction_date": "YYYY-MM-DD HH:mm:ss atau null",
       "confidence_score": number antara 0 dan 1
     }
   ],
@@ -104,12 +112,16 @@ export class SumopodProvider implements IAiProvider {
 
   /**
    * Ekstrak transaksi dari konten teks/transkripsi/OCR.
-   * Selalu return array — bisa 1 atau lebih transaksi dari 1 pesan.
+   * Selalu return array - bisa 1 atau lebih transaksi dari 1 pesan.
    */
   async extractTransaction(
     content: string,
     context?: ExtractionContext,
-  ): Promise<AiExtractionOutput[]> {
+  ): Promise<{
+    raw: string;
+    parsed: AiExtractionOutput[];
+    usage?: { inputTokens: number; outputTokens: number };
+  }> {
     logger.info(
       { contentLength: content.length, hasContext: !!context },
       "Extracting transactions via Sumopod",
@@ -120,7 +132,7 @@ export class SumopodProvider implements IAiProvider {
     const response = await axios.post(
       `${this.baseUrl}/chat/completions`,
       {
-        model: "gpt-4o-mini",
+        model: getConfig("AI_EXTRACTION_MODEL"),
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content },
@@ -138,6 +150,15 @@ export class SumopodProvider implements IAiProvider {
 
     const raw = response.data.choices[0].message.content;
     const parsed = JSON.parse(raw);
+    const apiUsage = response.data.usage;
+
+    let usage;
+    if (apiUsage) {
+      usage = {
+        inputTokens: apiUsage.prompt_tokens ?? 0,
+        outputTokens: apiUsage.completion_tokens ?? 0,
+      };
+    }
 
     // Validate via multi-extraction schema
     const validated: AiMultiExtractionOutput =
@@ -151,14 +172,14 @@ export class SumopodProvider implements IAiProvider {
       "Extraction complete",
     );
 
-    return validated.transactions;
+    return { raw, parsed: validated.transactions, usage };
   }
 
   async generateSummary(data: unknown): Promise<string> {
     const response = await axios.post(
       `${this.baseUrl}/chat/completions`,
       {
-        model: "gpt-4o-mini",
+        model: getConfig("AI_SUMMARY_MODEL"),
         messages: [
           {
             role: "system",
@@ -171,7 +192,7 @@ export class SumopodProvider implements IAiProvider {
           },
         ],
         temperature: 0.7,
-        max_tokens: 128,
+        max_tokens: 100,
       },
       {
         headers: {

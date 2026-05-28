@@ -9,7 +9,7 @@ export const DRIZZLE = Symbol("DRIZZLE");
 
 /**
  * Global module that provides the Drizzle database client.
- * Import this once in AppModule — all other modules can inject DRIZZLE directly.
+ * Import this once in AppModule - all other modules can inject DRIZZLE directly.
  */
 @Global()
 @Module({

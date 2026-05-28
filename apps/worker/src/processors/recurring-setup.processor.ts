@@ -30,8 +30,8 @@ interface ParsedRecurringBill {
 }
 
 const RECURRING_PARSER_PROMPT = `
-Kamu adalah parser pengingat tagihan berulang untuk aplikasi FinCore.
-Ekstrak informasi tagihan dari pesan user.
+Kamu adalah parser pengingat rutin (tagihan/pemasukan/kegiatan) untuk aplikasi FinCore.
+Ekstrak informasi dari pesan user. Jika pesan sedikit ambigu (misal "setiap minggu di tanggal 29" yang sebenarnya bermaksud bulanan karena menyebut tanggal pasti), gunakan nalar logika untuk menentukan frekuensi yang paling masuk akal.
 
 Frekuensi yang didukung (frequency):
 - DAILY: setiap hari
@@ -40,14 +40,14 @@ Frekuensi yang didukung (frequency):
 - YEARLY: setiap tahun (butuh day_of_month: 1-31, asumsikan bulan berjalan jika tidak ada)
 
 Contoh:
-- "Ingetin bayar listrik 250rb setiap tanggal 20" → frequency: "MONTHLY", day_of_month: 20
-- "Ingetin sedekah 50k tiap jumat" → frequency: "WEEKLY", day_of_week: 5
-- "Reminder minum obat tiap hari" → frequency: "DAILY"
-- "Ingetin bayar kos tiap tgl 5" → frequency: "MONTHLY", day_of_month: 5
+- "Ingetin bayar listrik 250rb setiap tanggal 20" > frequency: "MONTHLY", day_of_month: 20
+- "Ingetin sedekah 50k tiap jumat" > frequency: "WEEKLY", day_of_week: 5
+- "ingetin setiap minggu di tanggal 29 800k gw ada gajian sama pak xxxxxxxx" > frequency: "MONTHLY", day_of_month: 29, amount: 800000, name: "Gajian pak xxxxxxxx"
+- "Reminder minum obat tiap hari" > frequency: "DAILY"
 
 Return HANYA JSON:
 {
-  "name": "nama tagihan singkat",
+  "name": "nama kegiatan/tagihan singkat",
   "amount": number atau null,
   "frequency": "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY",
   "day_of_month": number (1-31) atau null,
@@ -205,7 +205,7 @@ export class RecurringSetupProcessor extends BaseProcessor {
       const res = await axios.post(
         `${getConfig("SUMOPOD_BASE_URL")}/chat/completions`,
         {
-          model: "gemini/gemini-2.0-flash-lite",
+          model: getConfig("AI_CLASSIFICATION_MODEL"),
           messages: [
             { role: "system", content: RECURRING_PARSER_PROMPT },
             { role: "user", content: message },

@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 
 // ── File size limits ──────────────────────────────────────────────────────────
 const MB = 1024 * 1024;
-const VOICE_REJECT_THRESHOLD = 5 * MB; // reject voice notes larger than 5 MB
+const VOICE_REJECT_THRESHOLD = 5 * MB;
 
 interface VoiceTranscriptionJobData {
   rawMessageId: string;
@@ -19,7 +19,7 @@ interface VoiceTranscriptionJobData {
   from: string;
   mediaUrl: string | null;
   mediaMimetype: string;
-  caption?: string | null; // user's text caption alongside the voice note
+  caption?: string | null;
 }
 
 import { StorageProvider } from "@fincore/storage";

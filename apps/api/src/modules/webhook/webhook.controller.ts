@@ -1,4 +1,3 @@
-import { OwnerOnlyGuard } from "@/common/guards/owner.guard";
 import { WebhookSignatureGuard } from "@/common/guards/webhook-signature.guard";
 import { WahaWebhookPayload } from "@/modules/webhook/waha-payload.dto";
 import { WebhookService } from "@/modules/webhook/webhook.service";
@@ -25,12 +24,10 @@ export class WebhookController {
    * 2. Filter owner-only
    * 3. Return 200 IMMEDIATELY
    * 4. Process async (fire-and-forget)
-   *
-   * NEVER do OCR / AI / heavy work here.
    */
   @Post("whatsapp")
   @HttpCode(HttpStatus.OK)
-  @UseGuards(WebhookSignatureGuard, OwnerOnlyGuard)
+  @UseGuards(WebhookSignatureGuard)
   receive(@Body() payload: WahaWebhookPayload): { ok: boolean } {
     this.webhookService.handleIncoming(payload).catch((err) => {
       this.logger.error(

@@ -15,6 +15,7 @@
     "@fincore/config": "workspace:*",
     "@fincore/contracts": "workspace:*",
     "@fincore/db": "workspace:*",
+    "@fincore/event-publisher": "workspace:*",
     "@fincore/logger": "workspace:*",
     "@fincore/queue": "workspace:*",
     "@fincore/shared": "workspace:*",

@@ -6,16 +6,25 @@ import {
   Worker,
   WorkerOptions,
 } from "@fincore/queue";
-import { QueueName } from "@fincore/shared";
+import { JobName, QueueName } from "@fincore/shared";
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 
 /**
- * Job data enqueued into the `wa-sender` queue.
+ * Job data enqueued into the `wa-sender` queue for text messages.
  */
 export interface SendWaMessageJobData {
   chatId: string;
   text: string;
   replyTo?: string;
+}
+
+/**
+ * Job data for sending an image.
+ */
+export interface SendWaImageJobData {
+  chatId: string;
+  imageUrl: string;
+  caption?: string;
 }
 
 const logger = createLogger("sender:wa-send-processor");
@@ -38,9 +47,35 @@ export class WaSendProcessor implements OnModuleInit, OnModuleDestroy {
 
     this.worker = new Worker(
       QueueName.WA_SENDER,
-      async (job: Job<SendWaMessageJobData>) => {
+      async (job: Job<SendWaMessageJobData | SendWaImageJobData>) => {
         const start = Date.now();
-        const { chatId, text, replyTo } = job.data;
+
+        // ── Image job ────────────────────────────────────────────────────────
+        if (job.name === JobName.SEND_WA_IMAGE) {
+          const { chatId, imageUrl, caption } = job.data as SendWaImageJobData;
+          if (!chatId || !imageUrl) {
+            logger.warn({ jobId: job.id }, "Invalid image job: missing data");
+            return;
+          }
+          logger.info({ jobId: job.id, chatId }, "Processing image send job");
+          try {
+            await this.waSend.sendImage(chatId, imageUrl, caption);
+            logger.info(
+              { jobId: job.id, durationMs: Date.now() - start },
+              "Image send job completed",
+            );
+          } catch (err) {
+            logger.error(
+              { jobId: job.id, err, durationMs: Date.now() - start },
+              "Image send job failed",
+            );
+            throw err;
+          }
+          return;
+        }
+
+        // ── Text job ─────────────────────────────────────────────────────────
+        const { chatId, text, replyTo } = job.data as SendWaMessageJobData;
 
         if (!chatId || !text) {
           logger.warn(

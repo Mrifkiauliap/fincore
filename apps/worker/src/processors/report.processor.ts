@@ -258,6 +258,55 @@ export class ReportProcessor extends BaseProcessor {
     }
 
     await this.sendReply(chatId, reply);
+
+    // ─── Generate Pie Chart (summary / by_category) ───────────────────────────
+    if (
+      parsed.report_type === "summary" ||
+      parsed.report_type === "by_category"
+    ) {
+      try {
+        const chartData = await db
+          .select({
+            category: transactionCategories.name,
+            total: sql<string>`SUM(${transactions.totalAmount})`,
+          })
+          .from(transactions)
+          .leftJoin(
+            transactionCategories,
+            eq(transactions.categoryId, transactionCategories.id),
+          )
+          .where(
+            and(
+              eq(transactions.userId, user.id),
+              eq(transactions.isDeleted, false),
+              eq(transactions.type, "expense"),
+              between(transactions.transactionDate, dateFrom, dateTo),
+            ),
+          )
+          .groupBy(transactionCategories.name)
+          .orderBy(sql`SUM(${transactions.totalAmount}) DESC`)
+          .limit(8);
+
+        if (chartData.length > 0) {
+          const chartUrl = this.buildChartUrl(
+            chartData
+              .filter((r) => r.category)
+              .map((r) => ({
+                label: r.category!,
+                value: Math.round(parseFloat(r.total ?? "0")),
+              })),
+            `Pengeluaran ${periodLabel}`,
+          );
+
+          await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_IMAGE, {
+            chatId,
+            imageUrl: chartUrl,
+          });
+        }
+      } catch (err) {
+        this.logger.warn({ err }, "Failed to generate chart (non-fatal)");
+      }
+    }
   }
 
   // ─── Report builders ────────────────────────────────────────────────────────
@@ -475,7 +524,7 @@ export class ReportProcessor extends BaseProcessor {
       const label = r.merchant ?? r.notes ?? "Tanpa keterangan";
       const dateStr = dayjs(r.transactionDate).tz(userTimezone).format("D MMM");
       lines.push(
-        `${i + 1}. ${label} — ${fmt(parseFloat(r.amount))} (${dateStr})`,
+        `${i + 1}. ${label} - ${fmt(parseFloat(r.amount))} (${dateStr})`,
       );
     });
 
@@ -510,7 +559,7 @@ export class ReportProcessor extends BaseProcessor {
       const label = r.merchant ?? r.notes ?? "Tanpa keterangan";
       const dateStr = dayjs(r.transactionDate).tz(userTimezone).format("D MMM");
       lines.push(
-        `${i + 1}. ${label} — ${fmt(parseFloat(r.amount))} (${dateStr})`,
+        `${i + 1}. ${label} - ${fmt(parseFloat(r.amount))} (${dateStr})`,
       );
     });
 
@@ -654,6 +703,58 @@ export class ReportProcessor extends BaseProcessor {
     }
 
     return lines.join("\n");
+  }
+
+  private buildChartUrl(
+    data: { label: string; value: number }[],
+    title: string,
+  ): string {
+    const labels = data.map((d) => d.label);
+    const values = data.map((d) => d.value);
+
+    // Minimalist dark palette
+    const colors = [
+      "#6366f1",
+      "#f59e0b",
+      "#10b981",
+      "#ef4444",
+      "#3b82f6",
+      "#ec4899",
+      "#8b5cf6",
+      "#14b8a6",
+    ];
+
+    const config = {
+      type: "pie",
+      data: {
+        labels,
+        datasets: [
+          {
+            data: values,
+            backgroundColor: colors.slice(0, data.length),
+            borderColor: "#1f2937",
+            borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: title,
+            color: "#f9fafb",
+            font: { size: 16, weight: "bold" },
+          },
+          legend: {
+            labels: { color: "#f9fafb", font: { size: 12 } },
+          },
+        },
+        layout: { padding: 10 },
+      },
+    };
+
+    const encoded = encodeURIComponent(JSON.stringify(config));
+    return `https://quickchart.io/chart?c=${encoded}&backgroundColor=%231f2937&width=600&height=400`;
   }
 
   private async parseQuery(query: string): Promise<ParsedQuery> {

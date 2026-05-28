@@ -1,4 +1,5 @@
 # Dependencies
+*bak
 node_modules/
 .pnpm-store/
 

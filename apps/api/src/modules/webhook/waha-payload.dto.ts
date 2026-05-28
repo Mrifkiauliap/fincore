@@ -41,11 +41,11 @@ export interface WahaMessagePayload {
   from: string;
   fromMe: boolean;
   to?: string;
-  body: string; // text content or caption for media messages
+  body: string;
   hasMedia: boolean;
-  media?: WahaMediaObject; // WAHA NOWEB: media info is here
-  mediaUrl?: string; // legacy / other engines fallback
-  mediaContentType?: string; // legacy fallback
+  media?: WahaMediaObject;
+  mediaUrl?: string;
+  mediaContentType?: string;
   mediaSize?: number;
   type?: WahaMessageType;
   ack?: number;
@@ -55,12 +55,12 @@ export interface WahaMessagePayload {
 }
 
 export type WahaMessageType =
-  | "chat" // text
-  | "ptt" // voice note (push-to-talk)
-  | "audio" // audio file
-  | "image" // image
-  | "document" // document
-  | "video" // video
+  | "chat"
+  | "ptt"
+  | "audio"
+  | "image"
+  | "document"
+  | "video"
   | "sticker"
   | "location"
   | "contact_card";
@@ -68,12 +68,6 @@ export type WahaMessageType =
 export interface WahaSessionPayload {
   status: string;
   name: string;
-}
-
-export function extractPhone(waId: string): string {
-  // "628xxxxxxxxxx@c.us" > "628xxxxxxxxxx"
-  // "247622363250777@lid" > "247622363250777"
-  return waId.replace("@c.us", "").replace("@g.us", "").replace("@lid", "");
 }
 
 // ─── Map WAHA message type to our MessageType enum ───────────────────────────
