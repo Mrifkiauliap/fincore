@@ -75,8 +75,8 @@ const envSchema = z.object({
   FINCORE_TRIGGER_PREFIX: z.string().optional(),
 
   // Webhooks
-  FINANCE_CORE_WEBHOOK_URL: z.string().url().optional(),
-  FINANCE_CORE_WEBHOOK_SECRET: z.string().optional(),
+  FINANCE_CORE_WEBHOOK_URL: z.string().url().optional().or(z.literal("")),
+  FINANCE_CORE_WEBHOOK_SECRET: z.string().optional().or(z.literal("")),
 
   // Worker
   WORKER_CONCURRENCY: z.coerce.number().default(5),
