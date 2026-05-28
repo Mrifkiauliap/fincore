@@ -3,7 +3,7 @@ version: "3.9"
 services:
   # ─── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     container_name: fincore-postgres
     restart: unless-stopped
     environment:
