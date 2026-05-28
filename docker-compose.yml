@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: fincore
-      POSTGRES_PASSWORD: fincore
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-fincore_pass}
       POSTGRES_DB: fincore_db
     # ports:
     #   - "5432:5432"
@@ -73,46 +73,46 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
 
   # ─── API (uncomment for containerized dev) ───────────────────────────────────
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: infrastructure/docker/api.Dockerfile
-  #   container_name: fincore-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - '3000:3000'
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     valkey:
-  #       condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: fincore-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
 
   # ─── Worker (uncomment for containerized dev) ─────────────────────────────────
-  # worker:
-  #   build:
-  #     context: .
-  #     dockerfile: infrastructure/docker/worker.Dockerfile
-  #   container_name: fincore-worker
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     valkey:
-  #       condition: service_healthy
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/worker.Dockerfile
+    container_name: fincore-worker
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
 
   # ─── Sender (uncomment for containerized dev) ─────────────────────────────────
-  # sender:
-  #   build:
-  #     context: .
-  #     dockerfile: infrastructure/docker/sender.Dockerfile
-  #   container_name: fincore-sender
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   depends_on:
-  #     valkey:
-  #       condition: service_healthy
+  sender:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/sender.Dockerfile
+    container_name: fincore-sender
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      valkey:
+        condition: service_healthy
 
 volumes:
   postgres_data:
