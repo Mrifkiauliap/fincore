@@ -24,6 +24,8 @@ RUN pnpm install --frozen-lockfile
 
 # Build the project
 COPY --from=builder /app/out/full/ .
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/turbo.json ./turbo.json
 RUN pnpm turbo run build --filter=@fincore/sender...
 
 # Stage 3: Runner
