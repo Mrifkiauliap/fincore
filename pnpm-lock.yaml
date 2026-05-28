@@ -162,6 +162,9 @@ importers:
       "@fincore/db":
         specifier: workspace:*
         version: link:../../packages/db
+      "@fincore/event-publisher":
+        specifier: workspace:*
+        version: link:../../packages/event-publisher
       "@fincore/logger":
         specifier: workspace:*
         version: link:../../packages/logger
@@ -249,15 +252,6 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  packages/analytics:
-    devDependencies:
-      "@types/node":
-        specifier: ^20.11.0
-        version: 20.19.41
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-
   packages/config:
     dependencies:
       dotenv:
@@ -324,10 +318,41 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  packages/event-publisher:
+    dependencies:
+      "@fincore/config":
+        specifier: workspace:*
+        version: link:../config
+      "@fincore/contracts":
+        specifier: workspace:*
+        version: link:../contracts
+      "@fincore/db":
+        specifier: workspace:*
+        version: link:../db
+      "@fincore/logger":
+        specifier: workspace:*
+        version: link:../logger
+      "@fincore/shared":
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@types/pg@8.20.0)(gel@2.2.0)(pg@8.21.0)
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+    devDependencies:
+      "@types/node":
+        specifier: ^20.11.0
+        version: 20.19.41
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   packages/logger:
     dependencies:
       "@fincore/config":
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../config
       pino:
         specifier: ^9.1.0
@@ -346,7 +371,7 @@ importers:
   packages/queue:
     dependencies:
       "@fincore/config":
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../config
       "@fincore/logger":
         specifier: workspace:*

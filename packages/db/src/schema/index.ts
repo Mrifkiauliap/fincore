@@ -8,11 +8,13 @@ export * from "./raw-ai-outputs";
 export * from "./raw-messages";
 export * from "./recurring-bills";
 export * from "./reports";
+export * from "./budgets";
 export * from "./transaction-categories";
 export * from "./transaction-tag-mappings";
 export * from "./transaction-tags";
 export * from "./transactions";
 export * from "./users";
+export * from "./webhook-subscriptions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { NewPaymentMethod } from "./payment-methods";

@@ -6,18 +6,20 @@ import {
 } from "@/modules/webhook/waha-payload.dto";
 import { FinanceGuardrail, MessageIntent } from "@fincore/ai";
 import getConfig from "@fincore/config";
+import { getDb, users } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
-import { enqueue } from "@fincore/queue";
+import { createValkeyConnection, enqueue } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
+import { eq } from "drizzle-orm";
 
 const logger = createLogger("webhook");
 
 @Injectable()
 export class WebhookService {
   private readonly guardrail = new FinanceGuardrail();
-
   private readonly triggerPrefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
+  private readonly valkey = createValkeyConnection();
 
   async handleIncoming(payload: WahaWebhookPayload): Promise<void> {
     if (payload.event !== "message") return;
@@ -44,20 +46,8 @@ export class WebhookService {
       logger.info({ msg }, "Message received");
     }
 
-    // ── Trigger prefix check (skip for media messages — they don't have a body) ──
-    const isMediaMessage = msg.hasMedia && !!msg.media?.url;
-    if (
-      this.triggerPrefix &&
-      !isMediaMessage &&
-      !msg.body?.startsWith(this.triggerPrefix)
-    ) {
-      logger.debug({ body: msg.body }, "Message skipped — prefix mismatch");
-      return;
-    }
-
-    const cleanBody = this.triggerPrefix
-      ? (msg.body ?? "").slice(this.triggerPrefix.length).trim()
-      : (msg.body ?? "");
+    // ── Extract body ──
+    const cleanBody = (msg.body ?? "").trim();
 
     const senderPhone = extractPhone(msg.from);
 
@@ -90,6 +80,61 @@ export class WebhookService {
       { from: senderPhone, type: messageType, hasMedia: msg.hasMedia },
       "Incoming message",
     );
+
+    // ── Cek Registrasi User ───────────────────────────────────────────────────
+    const db = getDb();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.phone, senderPhone))
+      .limit(1);
+
+    const isRegisterCommand = cleanBody
+      .toLowerCase()
+      .startsWith(this.triggerPrefix + "daftar");
+
+    if (!user) {
+      if (isRegisterCommand) {
+        // Teruskan ke settings command untuk di-handle registrasinya
+        await enqueue(
+          QueueName.SETTINGS_COMMAND,
+          JobName.PROCESS_SETTINGS_COMMAND,
+          {
+            chatId: msg.from,
+            senderPhone,
+            commandText: cleanBody,
+          },
+        );
+      } else {
+        // Blokir dan minta daftar
+        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+          chatId: msg.from,
+          text: `👋 Halo! Kamu belum terdaftar di FinCore.\n\nSilakan daftar terlebih dahulu dengan mengetik:\n*${this.triggerPrefix}daftar [Nama Kamu]*\n\nContoh: *${this.triggerPrefix}daftar Budi*`,
+        });
+      }
+      return;
+    }
+
+    // ── Multi-turn: cek pending_action SEBELUM guardrail ─────────────────────────
+    // Jika user sedang dalam alur multi-turn (pilih nomor, ya/tidak untuk hapus, dll)
+    // routing langsung ke TRANSACTION_COMMAND tanpa melewati guardrail
+    if (messageType === MessageType.TEXT && cleanBody.trim().length > 0) {
+      const pendingRaw = await this.valkey.get(
+        `fincore:pending_action:${msg.from}`,
+      );
+      if (pendingRaw) {
+        await enqueue(
+          QueueName.TRANSACTION_COMMAND,
+          JobName.PROCESS_TRANSACTION_COMMAND,
+          {
+            chatId: msg.from,
+            senderPhone,
+            commandText: cleanBody,
+          },
+        );
+        return;
+      }
+    }
 
     // ── Guardrail: check intent for text messages ─────────────────────────────
     if (messageType === MessageType.TEXT && cleanBody.length > 0) {
@@ -163,19 +208,102 @@ export class WebhookService {
         return;
       }
 
-      // COMMAND — perintah bantuan/help dll
       if (intentResult.intent === MessageIntent.COMMAND) {
         const lowerBody = cleanBody.toLowerCase();
-        let reply = "Fitur command ini sedang dibangun! 🚧";
-        if (
-          lowerBody.startsWith(this.triggerPrefix + "bantuan") ||
-          lowerBody.startsWith(this.triggerPrefix + "help")
-        ) {
-          reply = this.getGreetingReply();
+        const p = this.triggerPrefix;
+
+        // /budget
+        if (lowerBody.startsWith(p + "budget")) {
+          await enqueue(
+            QueueName.BUDGET_COMMAND,
+            JobName.PROCESS_BUDGET_COMMAND,
+            {
+              chatId: msg.from,
+              senderPhone,
+              commandText: cleanBody,
+            },
+          );
+          return;
         }
+
+        // /hapus, /hapus terakhir, /hapus [nama], /konfirmasi
+        if (
+          lowerBody.startsWith(p + "hapus") ||
+          lowerBody.startsWith(p + "konfirmasi")
+        ) {
+          await enqueue(
+            QueueName.TRANSACTION_COMMAND,
+            JobName.PROCESS_TRANSACTION_COMMAND,
+            { chatId: msg.from, senderPhone, commandText: cleanBody },
+          );
+          return;
+        }
+
+        // /tambah, /lihat
+        if (
+          lowerBody.startsWith(p + "tambah") ||
+          lowerBody.startsWith(p + "lihat")
+        ) {
+          await enqueue(
+            QueueName.CUSTOM_COMMAND,
+            JobName.PROCESS_CUSTOM_COMMAND,
+            { chatId: msg.from, senderPhone, commandText: cleanBody },
+          );
+          return;
+        }
+
+        // /atur, /settings
+        if (
+          lowerBody.startsWith(p + "atur") ||
+          lowerBody.startsWith(p + "settings")
+        ) {
+          await enqueue(
+            QueueName.SETTINGS_COMMAND,
+            JobName.PROCESS_SETTINGS_COMMAND,
+            { chatId: msg.from, senderPhone, commandText: cleanBody },
+          );
+          return;
+        }
+
+        // /laporan bulanan
+        if (
+          lowerBody === p + "laporan bulan" ||
+          lowerBody === p + "laporan bulanan"
+        ) {
+          await enqueue(
+            QueueName.MONTHLY_REPORT,
+            JobName.GENERATE_MONTHLY_REPORT,
+            {
+              senderPhone,
+            },
+          );
+          await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+            chatId: msg.from,
+            text: "⏳ Sedang merekap laporan bulanan...",
+            replyTo: msg.id,
+          });
+          return;
+        }
+
+        // /bantuan, /help
+        if (
+          lowerBody.startsWith(p + "bantuan") ||
+          lowerBody.startsWith(p + "help")
+        ) {
+          await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+            chatId: msg.from,
+            text: this.getGreetingReply(),
+            replyTo: msg.id,
+          });
+          return;
+        }
+
+        // Fallback unknown command
         await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
           chatId: msg.from,
-          text: reply,
+          text: `Fitur command ini sedang dibangun! 🚧
+
+Ketik ${p}bantuan untuk melihat perintah yang tersedia.`,
           replyTo: msg.id,
         });
         return;
@@ -234,16 +362,28 @@ export class WebhookService {
           : hour < 18
             ? "Selamat sore"
             : "Selamat malam";
+    const p = this.triggerPrefix;
 
     return (
       `${salam}! Aku FinCore, asisten keuangan personalmu.\n\n` +
-      `Yang bisa kamu lakukan:\n` +
-      `• Catat pengeluaran: _"Makan siang 25rb gopay"_\n` +
-      `• Catat pemasukan: _"Terima gaji 5jt"_\n` +
-      `• Transfer: _"Tf ke Jago 500rb dari BSI, admin 2500"_\n` +
-      `• Kirim struk atau voice note\n` +
-      `• Tanya: _"Berapa pengeluaranku minggu ini?"_\n\n` +
-      `Ketik ${this.triggerPrefix}bantuan untuk panduan lengkap.`
+      `*📝 Catat Transaksi:*\n` +
+      `• Ketik: _"Makan siang 25rb gopay"_\n` +
+      `• Voice note atau foto struk\n\n` +
+      `*🗑️ Manajemen Transaksi:*\n` +
+      `• \`${p}hapus\` — hapus transaksi terakhir\n` +
+      `• \`${p}hapus [nama]\` — cari & hapus transaksi\n` +
+      `• \`${p}konfirmasi\` — konfirmasi transaksi pending\n\n` +
+      `*💰 Budget:*\n` +
+      `• \`${p}budget set [kategori] [nominal]\`\n` +
+      `• \`${p}budget cek\` — lihat status budget bulan ini\n\n` +
+      `*📊 Laporan:*\n` +
+      `• Tanya: _"Berapa pengeluaranku minggu ini?"_\n` +
+      `• \`${p}laporan bulanan\`\n\n` +
+      `*⚙️ Pengaturan:*\n` +
+      `• \`${p}atur timezone Asia/Jakarta\`\n` +
+      `• \`${p}tambah metode [nama]\`\n` +
+      `• \`${p}tambah kategori [nama] expense\`\n` +
+      `• \`${p}lihat metode\` atau \`${p}lihat kategori\``
     );
   }
 }

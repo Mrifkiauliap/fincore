@@ -72,6 +72,32 @@ export class ConfirmationProcessor extends BaseProcessor {
         .set({ processingStatus: "done", processedAt: new Date() })
         .where(eq(rawMessages.id, rawMessageId));
 
+      const confirmedTxs = await db
+        .select()
+        .from(transactions)
+        .where(inArray(transactions.id, transactionIds));
+
+      // Queue for event publishing (Finance Core webhook) and budget checking
+      for (const tx of confirmedTxs) {
+        await enqueue(
+          QueueName.EVENT_PUBLISHING,
+          JobName.PUBLISH_FINANCIAL_EVENT,
+          {
+            transactionId: tx.id,
+            eventType: "transaction.created",
+          },
+        );
+
+        if (tx.type === "expense" && tx.categoryId) {
+          await enqueue(QueueName.BUDGET_CHECK, JobName.CHECK_BUDGET, {
+            userId: tx.userId,
+            categoryId: tx.categoryId,
+            transactionId: tx.id,
+            amount: Number(tx.totalAmount),
+          });
+        }
+      }
+
       this.logger.info(
         { transactionIds, chatId },
         "Transactions confirmed by user",

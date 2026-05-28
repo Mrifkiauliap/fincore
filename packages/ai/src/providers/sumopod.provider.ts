@@ -109,7 +109,7 @@ export class SumopodProvider implements IAiProvider {
   async extractTransaction(
     content: string,
     context?: ExtractionContext,
-  ): Promise<AiExtractionOutput[]> {
+  ): Promise<{ raw: string; parsed: AiExtractionOutput[] }> {
     logger.info(
       { contentLength: content.length, hasContext: !!context },
       "Extracting transactions via Sumopod",
@@ -120,7 +120,7 @@ export class SumopodProvider implements IAiProvider {
     const response = await axios.post(
       `${this.baseUrl}/chat/completions`,
       {
-        model: "gpt-4o-mini",
+        model: getConfig("AI_EXTRACTION_MODEL"),
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content },
@@ -151,14 +151,14 @@ export class SumopodProvider implements IAiProvider {
       "Extraction complete",
     );
 
-    return validated.transactions;
+    return { raw, parsed: validated.transactions };
   }
 
   async generateSummary(data: unknown): Promise<string> {
     const response = await axios.post(
       `${this.baseUrl}/chat/completions`,
       {
-        model: "gpt-4o-mini",
+        model: getConfig("AI_SUMMARY_MODEL"),
         messages: [
           {
             role: "system",

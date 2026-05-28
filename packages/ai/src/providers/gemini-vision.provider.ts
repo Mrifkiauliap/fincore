@@ -27,7 +27,7 @@ export class GeminiVisionProvider implements IVisionProvider {
     }
     this.client = new GoogleGenerativeAI(apiKey);
     this.model = this.client.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: getConfig("AI_VISION_MODEL"),
     });
   }
 
@@ -59,7 +59,7 @@ export class GeminiVisionProvider implements IVisionProvider {
 
     return {
       extractedText,
-      provider: "gemini-2.5-flash",
+      provider: getConfig("AI_VISION_MODEL"),
     };
   }
 }

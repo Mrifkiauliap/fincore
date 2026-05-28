@@ -124,9 +124,14 @@ export class AiExtractionProcessor extends BaseProcessor {
     // ── 2. Extract via AI (returns array) ─────────────────────────────────────
     let extractedList: AiExtractionOutput[];
     let rawResponse = "";
+    let aiLatencyMs = 0;
     try {
-      extractedList = await this.ai.extractTransaction(data.content, context);
-      rawResponse = JSON.stringify(extractedList);
+      const aiStart = Date.now();
+      const aiResult = await this.ai.extractTransaction(data.content, context);
+      aiLatencyMs = Date.now() - aiStart;
+
+      extractedList = aiResult.parsed;
+      rawResponse = aiResult.raw;
 
       const durationMs = Date.now() - start;
       await db.insert(aiProcessingLogs).values({
@@ -192,7 +197,8 @@ export class AiExtractionProcessor extends BaseProcessor {
       response: rawResponse,
       parsedOutput: extractedList as any,
       provider: "sumopod",
-      model: "gpt-4o-mini",
+      model: getConfig("AI_EXTRACTION_MODEL"),
+      latencyMs: aiLatencyMs,
       isValid: true,
     });
 
@@ -318,6 +324,26 @@ export class AiExtractionProcessor extends BaseProcessor {
       } else {
         savedIds.push(transaction.id);
         savedSummaries.push(summaryLine);
+
+        // Queue for event publishing (Finance Core webhook)
+        await enqueue(
+          QueueName.EVENT_PUBLISHING,
+          JobName.PUBLISH_FINANCIAL_EVENT,
+          {
+            transactionId: transaction.id,
+            eventType: "transaction.created",
+          },
+        );
+
+        // Queue for budget check if expense
+        if (extracted.type === "expense" && categoryId) {
+          await enqueue(QueueName.BUDGET_CHECK, JobName.CHECK_BUDGET, {
+            userId: data.userId,
+            categoryId,
+            transactionId: transaction.id,
+            amount: extracted.total_amount,
+          });
+        }
       }
     }
 

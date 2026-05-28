@@ -1,6 +1,7 @@
 import {
   index,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -46,6 +47,10 @@ export const reports = pgTable(
     type: reportTypeEnum("type").notNull(),
     periodStart: timestamp("period_start").notNull(),
     periodEnd: timestamp("period_end").notNull(),
+    /** Saldo awal dari bulan sebelumnya */
+    openingBalance: numeric("opening_balance").notNull().default("0"),
+    /** Saldo akhir setelah dikalkulasi bulan ini */
+    closingBalance: numeric("closing_balance").notNull().default("0"),
     /** Teks laporan yang dikirim ke WhatsApp */
     summary: text("summary"),
     /** Raw data laporan: breakdown, totals, dll */

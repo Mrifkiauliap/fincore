@@ -1,9 +1,11 @@
 import { BaseProcessor } from "@/processors/base.processor";
+import getConfig from "@fincore/config";
 import { getDb, rawMessages, users } from "@fincore/db";
 import { enqueue } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job } from "bullmq";
+import { eq } from "drizzle-orm";
 
 interface IncomingMessageJobData {
   waMessageId: string;
@@ -49,18 +51,43 @@ export class IncomingMessageProcessor extends BaseProcessor {
 
     try {
       const [user] = await db
-        .insert(users)
-        .values({ phone: data.senderPhone })
-        .onConflictDoUpdate({
-          target: users.phone,
-          set: { phone: data.senderPhone },
-        })
-        .returning();
+        .select()
+        .from(users)
+        .where(eq(users.phone, data.senderPhone))
+        .limit(1);
 
-      this.logger.debug(
-        { userId: user.id, phone: data.senderPhone },
-        "User upserted",
-      );
+      if (!user) {
+        this.logger.warn(
+          { phone: data.senderPhone },
+          "Received message from unregistered user in message.processor. Should have been blocked by webhook.",
+        );
+        return;
+      }
+
+      // ── Onboarding Surprise ──
+      // Kirim pesan sambutan panjang jika user baru pertama kali pakai bot ini (setelah daftar)
+      if (!user.onboardedAt) {
+        const prefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
+        const welcomeMessage =
+          `Halo *${user.name}*! Selamat datang di *FinCore* 🎉\n\n` +
+          `Saya asisten keuangan pribadimu via WhatsApp.\n\n` +
+          `Berikut cara menggunakannya:\n` +
+          `💬 Ketik transaksi: _"Makan siang 35rb GoPay"_\n` +
+          `🎤 Kirim voice note: _"Tadi bayar bensin 50 ribu"_\n` +
+          `📸 Foto struk belanja dan kirimkan ke sini\n\n` +
+          `Ketik ${prefix}bantuan untuk panduan lengkap.\n\n` +
+          `Yuk mulai catat keuanganmu! 💪`;
+
+        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+          chatId: data.from,
+          text: welcomeMessage,
+        });
+
+        await db
+          .update(users)
+          .set({ onboardedAt: new Date() })
+          .where(eq(users.id, user.id));
+      }
 
       const inserted = await db
         .insert(rawMessages)

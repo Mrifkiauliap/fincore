@@ -14,32 +14,6 @@ export enum TransactionType {
   TRANSFER = "transfer",
 }
 
-export enum TransactionCategory {
-  FOOD = "Food",
-  TRANSPORT = "Transport",
-  SHOPPING = "Shopping",
-  HEALTH = "Health",
-  ENTERTAINMENT = "Entertainment",
-  BILLS = "Bills",
-  EDUCATION = "Education",
-  INVESTMENT = "Investment",
-  SALARY = "Salary",
-  OTHER = "Other",
-}
-
-export enum PaymentMethod {
-  CASH = "Cash",
-  GOPAY = "GoPay",
-  OVO = "OVO",
-  DANA = "Dana",
-  QRIS = "QRIS",
-  SHOPEE_PAY = "ShopeePay",
-  BANK_TRANSFER = "Bank Transfer",
-  CREDIT_CARD = "Credit Card",
-  DEBIT_CARD = "Debit Card",
-  OTHER = "Other",
-}
-
 // ─── Processing Status ────────────────────────────────────────────────────────
 export enum ProcessingStatus {
   PENDING = "pending",
@@ -62,6 +36,13 @@ export const JobName = {
   SETUP_RECURRING: "setup-recurring",
   SEND_RECURRING_REMINDER: "send-recurring-reminder",
   EXPIRE_PENDING_CONFIRMATIONS: "expire-pending-confirmations",
+  PUBLISH_FINANCIAL_EVENT: "publish-financial-event",
+  GENERATE_MONTHLY_REPORT: "generate-monthly-report",
+  CHECK_BUDGET: "check-budget",
+  PROCESS_BUDGET_COMMAND: "process-budget-command",
+  PROCESS_TRANSACTION_COMMAND: "process-transaction-command",
+  PROCESS_CUSTOM_COMMAND: "process-custom-command",
+  PROCESS_SETTINGS_COMMAND: "process-settings-command",
 } as const;
 
 // ─── Queue Names ─────────────────────────────────────────────────────────────
@@ -76,11 +57,33 @@ export const QueueName = {
   CONFIRMATION: "confirmation",
   RECURRING_SETUP: "recurring-setup",
   RECURRING_REMINDER: "recurring-reminder",
+  EVENT_PUBLISHING: "event-publishing",
+  MONTHLY_REPORT: "monthly-report",
+  BUDGET_CHECK: "budget-check",
+  BUDGET_COMMAND: "budget-command",
+  TRANSACTION_COMMAND: "transaction-command",
+  CUSTOM_COMMAND: "custom-command",
+  SETTINGS_COMMAND: "settings-command",
 } as const;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const CURRENCY = {
   IDR: "IDR",
+  USD: "USD",
+  EUR: "EUR",
+  GBP: "GBP",
+  JPY: "JPY",
+  CNY: "CNY",
+  KRW: "KRW",
+  AUD: "AUD",
+  CAD: "CAD",
+  CHF: "CHF",
+  BRL: "BRL",
+  INR: "INR",
+  MXN: "MXN",
+  RUB: "RUB",
+  TRY: "TRY",
+  ZAR: "ZAR",
 } as const;
 
 export const MAX_RETRIES = 3;

@@ -29,7 +29,7 @@ export class GroqWhisperProvider implements ITranscriptionProvider {
 
     const transcription = await this.client.audio.transcriptions.create({
       file,
-      model: "whisper-large-v3",
+      model: getConfig("AI_VOICE_MODEL"),
       language: "id", // Indonesian
       response_format: "verbose_json",
     });
@@ -40,7 +40,7 @@ export class GroqWhisperProvider implements ITranscriptionProvider {
       transcript: transcription.text,
       language: (transcription as any).language ?? "id",
       durationSeconds: (transcription as any).duration,
-      provider: "groq-whisper-large-v3",
+      provider: `groq-${getConfig("AI_VOICE_MODEL")}`,
     };
   }
 }

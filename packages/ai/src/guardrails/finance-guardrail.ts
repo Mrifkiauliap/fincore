@@ -77,7 +77,7 @@ export class FinanceGuardrail {
 
     try {
       const res = await this.http.post("/chat/completions", {
-        model: "gemini/gemini-2.0-flash-lite", // Model termurah, untuk classification
+        model: getConfig("AI_CLASSIFICATION_MODEL"), // Model termurah, untuk classification
         messages: [
           { role: "system", content: GUARDRAIL_SYSTEM_PROMPT },
           { role: "user", content: message },
@@ -208,6 +208,12 @@ export class FinanceGuardrail {
       this.triggerPrefix + "help",
       this.triggerPrefix + "tagihan",
       this.triggerPrefix + "summary",
+      this.triggerPrefix + "budget",
+      this.triggerPrefix + "konfirmasi",
+      this.triggerPrefix + "tambah",
+      this.triggerPrefix + "lihat",
+      this.triggerPrefix + "atur",
+      this.triggerPrefix + "settings",
     ];
 
     if (commands.some((cmd) => lower.startsWith(cmd))) {

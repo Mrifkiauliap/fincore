@@ -15,7 +15,7 @@ export interface IAiProvider {
   extractTransaction(
     content: string,
     context?: ExtractionContext,
-  ): Promise<AiExtractionOutput[]>;
+  ): Promise<{ raw: string; parsed: AiExtractionOutput[] }>;
   generateSummary(data: unknown): Promise<string>;
 }
 

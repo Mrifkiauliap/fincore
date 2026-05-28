@@ -3,14 +3,18 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-let _db: ReturnType<typeof drizzle>;
+let _db: ReturnType<typeof initDb>;
+
+function initDb() {
+  const pool = new Pool({
+    connectionString: getConfig("DATABASE_URL") as string,
+  });
+  return drizzle(pool, { schema });
+}
 
 export function getDb() {
   if (!_db) {
-    const pool = new Pool({
-      connectionString: getConfig("DATABASE_URL") as string,
-    });
-    _db = drizzle(pool, { schema });
+    _db = initDb();
   }
   return _db;
 }

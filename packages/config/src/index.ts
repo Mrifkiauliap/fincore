@@ -46,6 +46,11 @@ const envSchema = z.object({
   // AI
   SUMOPOD_API_KEY: z.string().min(1),
   SUMOPOD_BASE_URL: z.string().url(),
+  AI_EXTRACTION_MODEL: z.string().default("gpt-4o-mini"),
+  AI_SUMMARY_MODEL: z.string().default("gpt-4o-mini"),
+  AI_VISION_MODEL: z.string().default("gemini-2.5-flash"),
+  AI_VOICE_MODEL: z.string().default("whisper-large-v3"),
+  AI_CLASSIFICATION_MODEL: z.string().default("gemini/gemini-2.0-flash-lite"),
 
   // Transcription
   GROQ_API_KEY: z.string().optional(),
@@ -69,8 +74,11 @@ const envSchema = z.object({
   OWNER_LID: z.string().optional(),
   FINCORE_TRIGGER_PREFIX: z.string().optional(),
 
+  // Webhooks
+  FINANCE_CORE_WEBHOOK_URL: z.string().url().optional(),
+  FINANCE_CORE_WEBHOOK_SECRET: z.string().optional(),
+
   // Worker
-  WORKER_PORT: z.coerce.number().default(3002),
   WORKER_CONCURRENCY: z.coerce.number().default(5),
 });
 

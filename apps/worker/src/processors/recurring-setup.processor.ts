@@ -205,7 +205,7 @@ export class RecurringSetupProcessor extends BaseProcessor {
       const res = await axios.post(
         `${getConfig("SUMOPOD_BASE_URL")}/chat/completions`,
         {
-          model: "gemini/gemini-2.0-flash-lite",
+          model: getConfig("AI_CLASSIFICATION_MODEL"),
           messages: [
             { role: "system", content: RECURRING_PARSER_PROMPT },
             { role: "user", content: message },
