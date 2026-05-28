@@ -1,0 +1,49 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─── 1. Checkout Code ──────────────────────────────────────────────────
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ─── 2. Setup SSH to VPS ───────────────────────────────────────────────
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      # ─── 3. Deploy via SSH ─────────────────────────────────────────────────
+      - name: Deploy to VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+            set -e
+
+            echo "==> Navigating to project directory..."
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+
+            echo "==> Pulling latest code..."
+            git pull origin main
+
+            echo "==> Rebuilding and restarting containers..."
+            docker compose build --no-cache api worker sender
+            docker compose up -d --force-recreate api worker sender cloudflared
+
+            echo "==> Running database migrations..."
+            docker compose exec -T api pnpm --filter @fincore/db run db:push || true
+
+            echo "==> Cleaning up unused Docker resources..."
+            docker image prune -f
+
+            echo "==> Deployment complete!"
+          ENDSSH
