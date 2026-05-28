@@ -87,6 +87,8 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
+    networks:
+      - fincore_net
 
   # ─── Worker (uncomment for containerized dev) ─────────────────────────────────
   worker:
@@ -101,6 +103,8 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
+    networks:
+      - fincore_net
 
   # ─── Sender (uncomment for containerized dev) ─────────────────────────────────
   sender:
@@ -113,6 +117,8 @@ services:
     depends_on:
       valkey:
         condition: service_healthy
+    networks:
+      - fincore_net
 
 volumes:
   postgres_data:
