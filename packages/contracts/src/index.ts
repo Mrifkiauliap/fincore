@@ -81,36 +81,25 @@ export type AiExtractionInput = z.infer<typeof AiExtractionInputSchema>;
 export const AiExtractionOutputSchema = z
   .object({
     type: z.nativeEnum(TransactionType),
-    /** Nama/judul singkat transaksi (contoh: "Isi Bensin", "Makan Siang") */
     name: z.string().default("Transaksi"),
     amount: z.number().positive(),
-    /** Biaya admin / transfer fee. Default 0 jika tidak disebutkan user. */
     fee: z
       .number()
       .nullable()
       .optional()
       .transform((v) => v ?? 0),
-    /**
-     * amount + fee. AI harus menghitung ini.
-     * Jika fee tidak ada, total_amount = amount.
-     */
     total_amount: z.number().nullable().optional(),
     currency: z.string().default("IDR"),
     category: z.string(),
     merchant: z.string().nullable().optional(),
     location: z.string().nullable().optional(),
-    /** Array string tag (contoh: ["kantor", "liburan"]) */
     tags: z.array(z.string()).default([]),
     payment_method: z.string().nullable().optional(),
-    /**
-     * Nama metode tujuan untuk transfer (contoh: "Bank Jago", "OVO").
-     * Null/undefined untuk expense dan income.
-     */
     to_payment_method: z.string().nullable().optional(),
-    /** Keterangan biaya tambahan, contoh: "biaya transfer beda bank". */
     fee_note: z.string().nullable().optional(),
     source_type: z.string(),
     notes: z.string().nullable().optional(),
+    transaction_date: z.string().nullable().optional(),
     confidence_score: z.number().min(0).max(1),
   })
   .transform((data) => ({
@@ -160,7 +149,7 @@ export type FinancialEventType =
 /**
  * Kontrak event yang dikirimkan FinCore ke external consumers (Finance Core, dll).
  *
- * - `eventId` = `transactions.event_id` — public stable ID, bukan internal PK.
+ * - `eventId` = `transactions.event_id` - public stable ID, bukan internal PK.
  *   Consumers harus simpan ini untuk idempotency check.
  * - `schemaVersion` di-bump jika ada breaking change di payload.
  */

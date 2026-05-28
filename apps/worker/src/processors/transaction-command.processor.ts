@@ -21,10 +21,12 @@ export interface TransactionCommandJobData {
 
 /** State yang disimpan di Valkey saat menunggu jawaban user */
 export interface PendingActionState {
-  action: "confirm_delete" | "select_candidate";
+  action: "confirm_delete" | "select_candidate" | "ubah_select" | "ubah_input";
   transactionIds: string[];
   /** Deskripsi singkat untuk ditampilkan ke user */
   description?: string;
+  /** Untuk ubah_input: ID transaksi yang dipilih */
+  selectedId?: string;
 }
 
 const PENDING_ACTION_TTL = 5 * 60; // 5 menit
@@ -98,12 +100,20 @@ export class TransactionCommandProcessor extends BaseProcessor {
       return;
     }
 
+    // /ubah [query]
+    if (lower.startsWith(this.prefix + "ubah ")) {
+      const query = commandText.slice((this.prefix + "ubah ").length).trim();
+      await this.handleEditSearch(chatId, user.id, query);
+      return;
+    }
+
     await this.sendReply(
       chatId,
       "❓ Perintah tidak dikenali.\n\nContoh:\n" +
-        `• \`${this.prefix}hapus\` — hapus transaksi terakhir\n` +
-        `• \`${this.prefix}hapus makan\` — cari transaksi untuk dihapus\n` +
-        `• \`${this.prefix}konfirmasi\` — lihat transaksi pending konfirmasi`,
+        `• \`${this.prefix}hapus\` - hapus transaksi terakhir\n` +
+        `• \`${this.prefix}hapus makan\` - cari transaksi untuk dihapus\n` +
+        `• \`${this.prefix}ubah bakso\` - ubah transaksi\n` +
+        `• \`${this.prefix}konfirmasi\` - lihat transaksi pending konfirmasi`,
     );
   }
 
@@ -138,7 +148,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
 
     const tz = await this.getUserTimezone(userId);
     const dateStr = dayjs(last.transactionDate).tz(tz).format("DD MMM YYYY");
-    const description = `*${last.name}* — ${formatter.format(Number(last.totalAmount))} (${dateStr})`;
+    const description = `*${last.name}* - ${formatter.format(Number(last.totalAmount))} (${dateStr})`;
 
     // Simpan state konfirmasi ke Valkey
     const state: PendingActionState = {
@@ -195,7 +205,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
     let reply = `🔍 Ditemukan *${candidates.length}* transaksi. Pilih nomor yang ingin dihapus:\n\n`;
     for (const [i, tx] of candidates.entries()) {
       const dateStr = dayjs(tx.transactionDate).tz(tz).format("DD MMM");
-      reply += `*${i + 1}.* ${tx.name} — ${formatter.format(Number(tx.totalAmount))} (${dateStr})\n`;
+      reply += `*${i + 1}.* ${tx.name} - ${formatter.format(Number(tx.totalAmount))} (${dateStr})\n`;
     }
     reply += `\nBalas dengan nomor (1–${candidates.length}) atau *batal*.`;
 
@@ -251,7 +261,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
     let reply = `📋 *${pending.length} transaksi menunggu konfirmasi:*\n\n`;
     for (const [i, tx] of pending.entries()) {
       const dateStr = dayjs(tx.transactionDate).tz(tz).format("DD MMM");
-      reply += `*${i + 1}.* ${tx.name} — ${formatter.format(Number(tx.totalAmount))} (${dateStr})\n`;
+      reply += `*${i + 1}.* ${tx.name} - ${formatter.format(Number(tx.totalAmount))} (${dateStr})\n`;
     }
     reply += `\nBalas nomor untuk konfirmasi satu, atau *semua* untuk konfirmasi semuanya.`;
 
@@ -273,7 +283,121 @@ export class TransactionCommandProcessor extends BaseProcessor {
     await this.sendReply(chatId, reply);
   }
 
-  // ─── HANDLE JAWABAN ATAS PENDING ACTION ───────────────────────────────────
+  // ─── EDIT TRANSAKSI (/ubah) ───────────────────────────────────────────────────
+
+  /** Cari kandidat transaksi yang ingin diedit */
+  private async handleEditSearch(
+    chatId: string,
+    userId: string,
+    query: string,
+  ) {
+    const candidates = await this.db
+      .select()
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.isDeleted, false),
+          ilike(transactions.name, `%${query}%`),
+        ),
+      )
+      .orderBy(desc(transactions.transactionDate))
+      .limit(5);
+
+    if (candidates.length === 0) {
+      return this.sendReply(
+        chatId,
+        `Tidak ada transaksi dengan kata kunci *"${query}"*.`,
+      );
+    }
+
+    const formatter = new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    });
+    const tz = await this.getUserTimezone(userId);
+
+    let reply = `Pilih transaksi yang ingin diubah:\n\n`;
+    for (const [i, tx] of candidates.entries()) {
+      const dateStr = dayjs(tx.transactionDate).tz(tz).format("DD MMM");
+      reply += `*${i + 1}.* ${tx.name} - ${formatter.format(Number(tx.totalAmount))} (${dateStr})\n`;
+    }
+    reply += `\nBalas nomor (1–${candidates.length}) atau *batal*.`;
+
+    const state: PendingActionState = {
+      action: "ubah_select",
+      transactionIds: candidates.map((tx) => tx.id),
+    };
+    await this.valkey.setex(
+      pendingActionKey(chatId),
+      PENDING_ACTION_TTL,
+      JSON.stringify(state),
+    );
+    await this.sendReply(chatId, reply);
+  }
+
+  /** Proses input perubahan setelah user pilih transaksi */
+  private async handleEditInput(
+    chatId: string,
+    userId: string,
+    selectedId: string,
+    input: string,
+  ) {
+    // Parse: bisa "50000", "Nama Baru", atau "50000 Nama Baru"
+    // Coba match angka di depan
+    const amountMatch = input.match(/^(\d[\d.,]*)/);
+    let newAmount: number | null = null;
+    let newName: string | null = null;
+
+    if (amountMatch) {
+      const raw = amountMatch[1].replace(/[.,]/g, "");
+      newAmount = parseInt(raw, 10);
+      const rest = input.slice(amountMatch[0].length).trim();
+      if (rest.length > 1) newName = rest;
+    } else {
+      // Semua teks = nama baru
+      newName = input.trim();
+    }
+
+    if (!newAmount && !newName) {
+      return this.sendReply(
+        chatId,
+        "Format tidak dikenali. Contoh:\n• `50000` - ubah nominal\n• `Makan Bakso` - ubah nama\n• `50000 Makan Bakso` - ubah keduanya",
+      );
+    }
+
+    const updateFields: Record<string, unknown> = { updatedAt: new Date() };
+    if (newAmount) {
+      updateFields.amount = String(newAmount);
+      updateFields.totalAmount = String(newAmount); // simplified (no fee recalc)
+    }
+    if (newName) updateFields.name = newName;
+
+    await this.db
+      .update(transactions)
+      .set(updateFields as any)
+      .where(
+        and(eq(transactions.id, selectedId), eq(transactions.userId, userId)),
+      );
+
+    await this.valkey.del(pendingActionKey(chatId));
+
+    const parts: string[] = [];
+    if (newName) parts.push(`nama > *${newName}*`);
+    if (newAmount) {
+      const fmt = new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+      });
+      parts.push(`nominal > *${fmt.format(newAmount)}*`);
+    }
+
+    return this.sendReply(chatId, `Transaksi diperbarui: ${parts.join(", ")}.`);
+  }
+
+  // ─── HANDLE JAWABAN ATAS PENDING ACTION ───────────────────────────────────────────
 
   private async handlePendingAction(
     chatId: string,
@@ -289,6 +413,58 @@ export class TransactionCommandProcessor extends BaseProcessor {
     if (isCancelled) {
       await this.valkey.del(pendingActionKey(chatId));
       return this.sendReply(chatId, "Oke, dibatalkan.");
+    }
+
+    // ─── ubah_select: user pilih nomor transaksi yg mau diedit
+    if (state.action === "ubah_select") {
+      const num = parseInt(answer.trim(), 10);
+      if (isNaN(num) || num < 1 || num > state.transactionIds.length) {
+        return this.sendReply(
+          chatId,
+          `Masukkan nomor antara 1–${state.transactionIds.length} atau *batal*.`,
+        );
+      }
+      const selectedId = state.transactionIds[num - 1];
+      const [tx] = await this.db
+        .select({
+          name: transactions.name,
+          totalAmount: transactions.totalAmount,
+        })
+        .from(transactions)
+        .where(eq(transactions.id, selectedId))
+        .limit(1);
+
+      const newState: PendingActionState = {
+        action: "ubah_input",
+        transactionIds: state.transactionIds,
+        selectedId,
+        description: tx?.name,
+      };
+      await this.valkey.setex(
+        pendingActionKey(chatId),
+        PENDING_ACTION_TTL,
+        JSON.stringify(newState),
+      );
+
+      const fmt = new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+      });
+      return this.sendReply(
+        chatId,
+        `Mengubah: *${tx?.name}* (${fmt.format(Number(tx?.totalAmount ?? 0))})\n\n` +
+          `Ketik nilai baru. Contoh:\n` +
+          `• \`75000\` - ubah nominal\n` +
+          `• \`Makan Siang\` - ubah nama\n` +
+          `• \`75000 Makan Siang\` - ubah keduanya\n\n` +
+          `Atau balas *batal* untuk membatalkan.`,
+      );
+    }
+
+    // ─── ubah_input: user kirim nilai baru
+    if (state.action === "ubah_input" && state.selectedId) {
+      return this.handleEditInput(chatId, userId, state.selectedId, answer);
     }
 
     if (state.action === "confirm_delete") {
@@ -376,7 +552,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
           `✅ Transaksi *${tx.name}* berhasil dikonfirmasi.`,
         );
       } else {
-        // Mode: pilih untuk dihapus — minta konfirmasi ulang
+        // Mode: pilih untuk dihapus - minta konfirmasi ulang
         const newState: PendingActionState = {
           action: "confirm_delete",
           transactionIds: [selectedId],

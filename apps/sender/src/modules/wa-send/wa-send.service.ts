@@ -39,7 +39,7 @@ export class WaSendService {
 
   /**
    * Per-chatId serial lock.
-   * Ensures concurrent sendText() calls to the same chat are queued —
+   * Ensures concurrent sendText() calls to the same chat are queued -
    * prevents typing indicator race conditions when multiple jobs land
    * for the same recipient at nearly the same time.
    */
@@ -153,6 +153,41 @@ export class WaSendService {
       throw err;
     } finally {
       await this.stopTyping(chatId);
+    }
+  }
+
+  // ─── Send Image ───────────────────────────────────────────────────────────────
+
+  /**
+   * Send an image via WAHA using a public URL.
+   * @param chatId  WhatsApp chat ID
+   * @param imageUrl Public URL of the image (QuickChart.io, etc.)
+   * @param caption Optional caption text
+   */
+  async sendImage(
+    chatId: string,
+    imageUrl: string,
+    caption?: string,
+  ): Promise<void> {
+    const session = this.session;
+
+    logger.info({ chatId, imageUrl }, "Sending image message");
+
+    try {
+      await this.http.post(`/api/sendImage`, {
+        session,
+        chatId,
+        file: {
+          mimetype: "image/png",
+          url: imageUrl,
+          filename: "chart.png",
+        },
+        ...(caption ? { caption } : {}),
+      });
+      logger.info({ chatId }, "Image sent ✅");
+    } catch (err) {
+      logger.error({ err, chatId }, "Failed to send image via WAHA");
+      throw err;
     }
   }
 }

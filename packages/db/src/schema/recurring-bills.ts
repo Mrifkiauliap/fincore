@@ -23,10 +23,9 @@ export const recurringBills = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    name: text("name").notNull(), // "Listrik PLN", "Spotify", dll
+    name: text("name").notNull(),
     amount: numeric("amount", { precision: 15, scale: 2 }),
     currency: text("currency").default("IDR").notNull(),
-    /** Metode pembayaran yang biasa digunakan (opsional) */
     paymentMethodId: uuid("payment_method_id").references(
       () => paymentMethods.id,
       { onDelete: "set null" },
@@ -34,21 +33,15 @@ export const recurringBills = pgTable(
     categoryId: uuid("category_id").references(() => transactionCategories.id, {
       onDelete: "set null",
     }),
-    /** Frekuensi tagihan: DAILY, WEEKLY, MONTHLY, YEARLY */
     frequency: text("frequency", {
       enum: ["DAILY", "WEEKLY", "MONTHLY", "YEARLY"],
     })
       .default("MONTHLY")
       .notNull(),
-    /** Tanggal jatuh tempo (1–31) untuk MONTHLY/YEARLY. */
     dayOfMonth: integer("day_of_month"),
-    /** Hari dalam seminggu (0=Minggu, 1=Senin, ..., 6=Sabtu) untuk WEEKLY. */
     dayOfWeek: integer("day_of_week"),
-    /** Tanggal reminder dikirim = dayOfMonth - 1 (H-1) atau sesuai logic frequency */
     reminderDayOffset: integer("reminder_day_offset").default(-1).notNull(),
-    /** Kapan reminder berikutnya akan dikirim */
     nextReminderAt: timestamp("next_reminder_at").notNull(),
-    /** Kapan terakhir reminder dikirim */
     lastReminderAt: timestamp("last_reminder_at"),
     isActive: boolean("is_active").default(true).notNull(),
     notes: text("notes"),

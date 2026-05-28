@@ -4,13 +4,16 @@ import {
   getDb,
   paymentMethods,
   transactionCategories,
+  transactionTagMappings,
+  transactionTags,
+  transactions,
   users,
 } from "@fincore/db";
 import { enqueue } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
-import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 
 export interface CustomCommandJobData {
   chatId: string;
@@ -77,14 +80,152 @@ export class CustomCommandProcessor extends BaseProcessor {
       return this.handleListCategories(chatId, user.id, typeFilter);
     }
 
+    // ── /cari ─────────────────────────────────────────────────────────────────
+    if (lower.startsWith(p + "cari ")) {
+      const query = commandText.slice((p + "cari ").length).trim();
+      return this.handleSearch(chatId, user.id, query);
+    }
+
     await this.sendReply(
       chatId,
       "❓ Contoh penggunaan:\n" +
         `• \`${p}tambah metode BCA Tabungan\`\n` +
         `• \`${p}tambah kategori Langganan Streaming expense\`\n` +
         `• \`${p}lihat metode\`\n` +
-        `• \`${p}lihat kategori expense\``,
+        `• \`${p}lihat kategori expense\`\n` +
+        `• \`${p}cari bakso\`\n` +
+        `• \`${p}cari #cheatday\``,
     );
+  }
+
+  // ─── CARI TRANSAKSI ────────────────────────────────────────────────────────
+
+  private async handleSearch(chatId: string, userId: string, query: string) {
+    const isTagSearch = query.startsWith("#");
+    const cleanQuery = query.replace(/^#/, "").trim();
+
+    let results: {
+      id: string;
+      name: string;
+      totalAmount: string;
+      transactionDate: Date;
+      type: string;
+      categoryName: string | null;
+    }[] = [];
+
+    if (isTagSearch) {
+      // Cari transaksi berdasarkan tag
+      const matchingTags = await this.db
+        .select({ id: transactionTags.id })
+        .from(transactionTags)
+        .where(
+          and(
+            eq(transactionTags.userId, userId),
+            ilike(transactionTags.name, `%${cleanQuery}%`),
+          ),
+        );
+
+      if (matchingTags.length === 0) {
+        return this.sendReply(
+          chatId,
+          `Tidak ada transaksi dengan tag *#${cleanQuery}*.`,
+        );
+      }
+
+      const tagIds = matchingTags.map((t) => t.id);
+      const mappings = await this.db
+        .select({ transactionId: transactionTagMappings.transactionId })
+        .from(transactionTagMappings)
+        .where(inArray(transactionTagMappings.tagId, tagIds));
+
+      const txIds = [...new Set(mappings.map((m) => m.transactionId))];
+      if (txIds.length === 0) {
+        return this.sendReply(
+          chatId,
+          `Tidak ada transaksi dengan tag *#${cleanQuery}*.`,
+        );
+      }
+
+      results = await this.db
+        .select({
+          id: transactions.id,
+          name: transactions.name,
+          totalAmount: transactions.totalAmount,
+          transactionDate: transactions.transactionDate,
+          type: transactions.type,
+          categoryName: transactionCategories.name,
+        })
+        .from(transactions)
+        .leftJoin(
+          transactionCategories,
+          eq(transactions.categoryId, transactionCategories.id),
+        )
+        .where(
+          and(
+            eq(transactions.userId, userId),
+            eq(transactions.isDeleted, false),
+            inArray(transactions.id, txIds),
+          ),
+        )
+        .orderBy(desc(transactions.transactionDate))
+        .limit(5);
+    } else {
+      // Cari berdasarkan nama transaksi
+      results = await this.db
+        .select({
+          id: transactions.id,
+          name: transactions.name,
+          totalAmount: transactions.totalAmount,
+          transactionDate: transactions.transactionDate,
+          type: transactions.type,
+          categoryName: transactionCategories.name,
+        })
+        .from(transactions)
+        .leftJoin(
+          transactionCategories,
+          eq(transactions.categoryId, transactionCategories.id),
+        )
+        .where(
+          and(
+            eq(transactions.userId, userId),
+            eq(transactions.isDeleted, false),
+            ilike(transactions.name, `%${cleanQuery}%`),
+          ),
+        )
+        .orderBy(desc(transactions.transactionDate))
+        .limit(5);
+    }
+
+    if (results.length === 0) {
+      return this.sendReply(
+        chatId,
+        `Tidak ada transaksi yang cocok dengan *"${query}"*.`,
+      );
+    }
+
+    const formatter = new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    });
+
+    const typeLabel = (t: string) =>
+      t === "expense" ? "Keluar" : t === "income" ? "Masuk" : "Transfer";
+
+    let reply = `Hasil pencarian *"${query}"* (${results.length} transaksi):\n\n`;
+    for (const tx of results) {
+      const date = new Date(tx.transactionDate).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+      const cat = tx.categoryName ? ` · ${tx.categoryName}` : "";
+      reply += `• *${tx.name}*\n`;
+      reply += `  ${formatter.format(Number(tx.totalAmount))} · ${typeLabel(tx.type)}${cat}\n`;
+      reply += `  ${date}\n\n`;
+    }
+
+    await this.sendReply(chatId, reply.trim());
   }
 
   // ─── HANDLERS ─────────────────────────────────────────────────────────────

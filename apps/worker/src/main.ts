@@ -2,12 +2,10 @@ import { WorkerModule } from "@/worker.module";
 import { createLogger } from "@fincore/logger";
 import { NestFactory } from "@nestjs/core";
 
-import { EventEmitter } from "events";
-
 const logger = createLogger("worker");
 
 // Tambah limit listener karena kita punya banyak BullMQ worker processors
-EventEmitter.defaultMaxListeners = 20;
+process.setMaxListeners(30);
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(WorkerModule, {
@@ -20,6 +18,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err) => {
-  logger.error({ err }, "Failed to start Worker");
+  console.error("Failed to start Worker:", err);
   process.exit(1);
 });

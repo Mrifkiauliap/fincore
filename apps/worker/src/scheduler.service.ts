@@ -11,6 +11,17 @@ export class SchedulerService implements OnModuleInit {
     logger.info("Registering repeatable jobs...");
 
     try {
+      // Rollover budget otomatis (Tanggal 1, jam 01:00 WIB) - sebelum laporan bulanan
+      await enqueue(
+        QueueName.BUDGET_ROLLOVER,
+        JobName.ROLLOVER_BUDGETS,
+        {},
+        {
+          repeat: { pattern: "0 1 1 * *", tz: "Asia/Jakarta" },
+          jobId: "budget-rollover-scheduler-v1",
+        },
+      );
+
       // Daftarkan laporan bulanan otomatis (Tanggal 1, jam 07:00 pagi WIB)
       await enqueue(
         QueueName.MONTHLY_REPORT,
@@ -18,7 +29,7 @@ export class SchedulerService implements OnModuleInit {
         {},
         {
           repeat: { pattern: "0 7 1 * *", tz: "Asia/Jakarta" },
-          jobId: "monthly-report-scheduler-v1", // Mencegah duplikasi job registrasi
+          jobId: "monthly-report-scheduler-v1",
         },
       );
       logger.info("Scheduler initialized successfully");

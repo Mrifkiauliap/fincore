@@ -17,3 +17,12 @@ export function sanitizeString(str: string): string {
   if (!str) return str;
   return str.trim().replace(/\s+/g, " ");
 }
+
+/**
+ * Extract phone number from WhatsApp ID
+ */
+export function extractPhone(waId: string): string {
+  // "628xxxxxxxxxx@c.us" > "628xxxxxxxxxx"
+  // "247622363250777@lid" > "247622363250777"
+  return waId.replace("@c.us", "").replace("@g.us", "").replace("@lid", "");
+}

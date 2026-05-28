@@ -245,12 +245,11 @@ export class MonthlyReportProcessor extends BaseProcessor {
         }
       }
 
-      budgetSummaryStr = `📋 *Ringkasan Budget:*\n`;
+      budgetSummaryStr = `*Ringkasan Budget:*\n`;
       if (safeBudgetCount > 0)
-        budgetSummaryStr += `• ${safeBudgetCount} kategori dalam batas ✅\n`;
+        budgetSummaryStr += `${safeBudgetCount} kategori dalam batas\n`;
       if (overBudgetCount > 0)
-        budgetSummaryStr += `• ${overBudgetCount} kategori terlampaui 🚨\n`;
-      budgetSummaryStr += `\n`;
+        budgetSummaryStr += `${overBudgetCount} kategori melebihi batas\n`;
     }
 
     // 6. Simpan Laporan ke DB
@@ -281,29 +280,35 @@ export class MonthlyReportProcessor extends BaseProcessor {
       year: "numeric",
     });
 
-    let messageStr = `📊 *Laporan Keuangan Bulanan — ${monthName}*\n\n`;
-    messageStr += `💰 Saldo Awal: ${formatter.format(openingBalance)}\n`;
-    messageStr += `➕ Total Pemasukan: ${formatter.format(totalIncome)}\n`;
-    messageStr += `➖ Total Pengeluaran: ${formatter.format(totalExpense)}\n`;
-    messageStr += `💳 Total Transfer: ${formatter.format(totalTransfer)}\n`;
-    messageStr += `✅ Saldo Akhir: ${formatter.format(closingBalance)}\n\n`;
+    const netSign = closingBalance >= openingBalance ? "+" : "";
+    const netDiff = closingBalance - openingBalance;
+
+    let messageStr = `*Laporan ${monthName}*\n\n`;
+
+    messageStr += `Saldo Awal    : ${formatter.format(openingBalance)}\n`;
+    messageStr += `Pemasukan     : ${formatter.format(totalIncome)}\n`;
+    messageStr += `Pengeluaran   : ${formatter.format(totalExpense)}\n`;
+    if (totalTransfer > 0) {
+      messageStr += `Transfer      : ${formatter.format(totalTransfer)}\n`;
+    }
+    messageStr += `──────────────────────────\n`;
+    messageStr += `Saldo Akhir   : *${formatter.format(closingBalance)}*`;
+    messageStr += ` (${netSign}${formatter.format(netDiff)})\n`;
 
     if (topCategories.length > 0) {
-      messageStr += `📂 *Top Pengeluaran:*\n`;
+      messageStr += `\n*Pengeluaran Terbesar:*\n`;
       for (const cat of topCategories) {
-        messageStr += `• ${cat.categoryName} — ${formatter.format(cat.total)} (${cat.percentage.toFixed(0)}%)\n`;
+        const bar = "█".repeat(Math.round(cat.percentage / 10)).padEnd(10, "░");
+        messageStr += `${cat.categoryName}\n${bar} ${formatter.format(cat.total)} (${cat.percentage.toFixed(0)}%)\n`;
       }
-      messageStr += `\n`;
     }
 
     if (budgetSummaryStr) {
-      messageStr += budgetSummaryStr;
+      messageStr += `\n${budgetSummaryStr}`;
     }
 
     if (insight) {
-      messageStr += `💡 *Insight:*\n${insight}`;
-    } else {
-      messageStr += `Semangat mencatat keuangan di bulan ini! 😄`;
+      messageStr += `\n${insight}`;
     }
 
     // 8. Kirim via WA

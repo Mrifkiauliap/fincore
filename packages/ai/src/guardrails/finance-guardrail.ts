@@ -107,7 +107,7 @@ export class FinanceGuardrail {
       return {
         intent: MessageIntent.LOG_TRANSACTION,
         confidence: 0.5,
-        reason: "Guardrail error — fail open",
+        reason: "Guardrail error - fail open",
       };
     }
   }

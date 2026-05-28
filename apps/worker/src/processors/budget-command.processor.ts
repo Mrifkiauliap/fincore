@@ -1,5 +1,4 @@
 import { BaseProcessor } from "@/processors/base.processor";
-import { SumopodProvider } from "@fincore/ai";
 import { budgets, getDb, transactionCategories, users } from "@fincore/db";
 import { enqueue } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
@@ -23,7 +22,6 @@ export interface BudgetCommandJobData {
 export class BudgetCommandProcessor extends BaseProcessor {
   readonly queueName = QueueName.BUDGET_COMMAND;
   private readonly db = getDb();
-  private readonly ai = new SumopodProvider();
 
   constructor() {
     super("worker:budget-command");

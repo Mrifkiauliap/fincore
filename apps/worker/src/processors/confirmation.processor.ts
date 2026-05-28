@@ -1,10 +1,10 @@
 import { BaseProcessor } from "@/processors/base.processor";
-import { getDb, rawMessages, transactions } from "@fincore/db";
+import { getDb, paymentMethods, rawMessages, transactions } from "@fincore/db";
 import { createValkeyConnection, enqueue } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job } from "bullmq";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, isNull, or } from "drizzle-orm";
 
 interface ConfirmationJobData {
   chatId: string;
@@ -32,7 +32,7 @@ export class ConfirmationProcessor extends BaseProcessor {
     // ── 1. Cek apakah ada pending confirmation untuk user ini ──────────────────
     const raw = await this.valkey.get(pendingConfirmKey(chatId));
     if (!raw) {
-      // Tidak ada transaksi pending — mungkin sudah expired atau belum pernah ada
+      // Tidak ada transaksi pending - mungkin sudah expired atau belum pernah ada
       await this.sendReply(
         chatId,
         "Tidak ada transaksi yang menunggu konfirmasi.",
@@ -59,6 +59,16 @@ export class ConfirmationProcessor extends BaseProcessor {
         "simpan",
         "konfirmasi",
       ].includes(answer.toLowerCase().trim());
+
+    const isNegative = [
+      "tidak",
+      "batal",
+      "cancel",
+      "no",
+      "bukan",
+      "salah",
+      "hapus",
+    ].includes(answer.toLowerCase().trim());
 
     if (isPositive) {
       // ── 2a. Konfirmasi: update isConfirmed = true ─────────────────────────────
@@ -109,7 +119,7 @@ export class ConfirmationProcessor extends BaseProcessor {
           ? `${transactionIds.length} transaksi berhasil disimpan.`
           : "Transaksi berhasil disimpan.",
       );
-    } else {
+    } else if (isNegative) {
       // ── 2b. Batalkan: soft delete transaksi ───────────────────────────────────
       await db
         .update(transactions)
@@ -130,6 +140,96 @@ export class ConfirmationProcessor extends BaseProcessor {
       );
 
       await this.sendReply(chatId, "Oke, transaksi dibatalkan.");
+    } else {
+      // ── 2c. Coba resolve sebagai metode pembayaran ─────────────────────────────
+      // Ambil userId dari salah satu transaksi
+      const [sampleTx] = await db
+        .select({ userId: transactions.userId })
+        .from(transactions)
+        .where(eq(transactions.id, transactionIds[0]))
+        .limit(1);
+
+      if (sampleTx) {
+        const lowerAnswer = answer.toLowerCase().trim();
+        const availableMethods = await db
+          .select({ id: paymentMethods.id, name: paymentMethods.name })
+          .from(paymentMethods)
+          .where(
+            or(
+              isNull(paymentMethods.userId),
+              eq(paymentMethods.userId, sampleTx.userId),
+            ),
+          );
+
+        // Cari exact atau fuzzy match
+        let match = availableMethods.find(
+          (m) => m.name.toLowerCase() === lowerAnswer,
+        );
+        if (!match) {
+          match = availableMethods.find(
+            (m) =>
+              m.name.toLowerCase().includes(lowerAnswer) ||
+              lowerAnswer.includes(m.name.toLowerCase()),
+          );
+        }
+
+        if (match) {
+          // Update payment method dan confirm
+          await db
+            .update(transactions)
+            .set({
+              paymentMethodId: match.id,
+              isConfirmed: true,
+            })
+            .where(inArray(transactions.id, transactionIds));
+
+          await db
+            .update(rawMessages)
+            .set({ processingStatus: "done", processedAt: new Date() })
+            .where(eq(rawMessages.id, rawMessageId));
+
+          const confirmedTxs = await db
+            .select()
+            .from(transactions)
+            .where(inArray(transactions.id, transactionIds));
+
+          for (const tx of confirmedTxs) {
+            await enqueue(
+              QueueName.EVENT_PUBLISHING,
+              JobName.PUBLISH_FINANCIAL_EVENT,
+              {
+                transactionId: tx.id,
+                eventType: "transaction.created",
+              },
+            );
+
+            if (tx.type === "expense" && tx.categoryId) {
+              await enqueue(QueueName.BUDGET_CHECK, JobName.CHECK_BUDGET, {
+                userId: tx.userId,
+                categoryId: tx.categoryId,
+                transactionId: tx.id,
+                amount: Number(tx.totalAmount),
+              });
+            }
+          }
+
+          this.logger.info(
+            { transactionIds, chatId, paymentMethod: match.name },
+            "Transactions confirmed with new payment method",
+          );
+
+          await this.sendReply(chatId, `Tercatat menggunakan ${match.name}.`);
+          await this.valkey.del(pendingConfirmKey(chatId));
+          return;
+        }
+      }
+
+      // Jika tidak match apa-apa
+      await this.sendReply(
+        chatId,
+        "Jawaban tidak dikenali.\nBalas *ya* untuk konfirmasi, *tidak* untuk batalkan, atau balas dengan *nama metode pembayaran* jika metode sebelumnya kosong.",
+      );
+      return; // Jangan hapus pending action, tunggu balasan yang valid
     }
 
     // ── 3. Hapus session dari Valkey ───────────────────────────────────────────

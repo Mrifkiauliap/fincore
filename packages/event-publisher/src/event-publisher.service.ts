@@ -10,7 +10,7 @@ import { WebhookRegistryService } from "./webhook-registry.service";
 const logger = createLogger("event-publisher");
 
 /**
- * EventPublisher — multi-delivery orchestrator.
+ * EventPublisher - multi-delivery orchestrator.
  *
  * Inspired by GitHub/Stripe/Clerk webhook model:
  * - ONE event can be delivered to MULTIPLE subscribers in parallel
@@ -23,12 +23,12 @@ const logger = createLogger("event-publisher");
  *
  * Flow:
  *   Transaction saved (is_published = false)
- *     → Enqueue: event-publishing job
- *     → EventPublisher.publish(event)
- *     → WebhookRegistryService.getActiveSubscribers(eventType)
- *     → deliver to ALL subscribers in parallel (Promise.allSettled)
- *     → if ANY subscriber succeeds: mark is_published = true
- *     → log all results to webhook_delivery_logs
+ *     > Enqueue: event-publishing job
+ *     > EventPublisher.publish(event)
+ *     > WebhookRegistryService.getActiveSubscribers(eventType)
+ *     > deliver to ALL subscribers in parallel (Promise.allSettled)
+ *     > if ANY subscriber succeeds: mark is_published = true
+ *     > log all results to webhook_delivery_logs
  */
 export class EventPublisher {
   constructor(private readonly registry: WebhookRegistryService) {}
@@ -36,7 +36,7 @@ export class EventPublisher {
   /**
    * Publish a FinancialEvent to all active subscribers.
    *
-   * Returns an array of DeliveryResult — one per subscriber.
+   * Returns an array of DeliveryResult - one per subscriber.
    * Returns empty array if no active subscribers (event stays unpublished).
    */
   async publish(event: FinancialEvent): Promise<DeliveryResult[]> {
@@ -47,7 +47,7 @@ export class EventPublisher {
     if (subscribers.length === 0) {
       logger.debug(
         { eventId: event.eventId, eventType: event.eventType },
-        "No active subscribers — event stays unpublished (catch-up will handle it)",
+        "No active subscribers - event stays unpublished (catch-up will handle it)",
       );
       return [];
     }
@@ -62,7 +62,7 @@ export class EventPublisher {
       "Publishing event to subscribers",
     );
 
-    // Deliver to ALL subscribers in parallel — each is independent
+    // Deliver to ALL subscribers in parallel - each is independent
     const settled = await Promise.allSettled(
       subscribers.map((sub) => {
         const transport = new WebhookTransport(sub);
@@ -74,7 +74,6 @@ export class EventPublisher {
     const results: DeliveryResult[] = settled.map((r, i) => {
       if (r.status === "fulfilled") return r.value;
 
-      // Should rarely happen — WebhookTransport catches internally
       return {
         subscriptionId: subscribers[i]!.id,
         subscriptionName: subscribers[i]!.name,
@@ -103,7 +102,7 @@ export class EventPublisher {
    * Catch-up: re-publish a batch of unpublished events.
    * Used by a scheduled job to replay events that had no subscribers at the time.
    *
-   * @returns Map of eventId → delivery results
+   * @returns Map of eventId > delivery results
    */
   async catchUp(
     events: FinancialEvent[],

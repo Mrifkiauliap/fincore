@@ -20,15 +20,11 @@ export const transactionCategories = pgTable(
   "transaction_categories",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** NULL = global default, terisi = custom milik user */
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    /** Contoh: 'food', 'transport', 'salary'. Unik per user (atau global jika userId null) */
     slug: text("slug").notNull(),
     type: transactionTypeEnum("type").notNull(),
-    /** Emoji icon */
     icon: text("icon"),
-    /** Hex color untuk UI */
     color: text("color"),
     isDefault: boolean("is_default").default(false).notNull(),
     isActive: boolean("is_active").default(true).notNull(),

@@ -9,7 +9,7 @@ import { createHmac } from "crypto";
 const logger = createLogger("event-publisher:webhook");
 
 /**
- * WebhookTransport — delivers a FinancialEvent to ONE specific subscriber.
+ * WebhookTransport - delivers a FinancialEvent to ONE specific subscriber.
  *
  * Features:
  * - HMAC-SHA256 signature on every request (`X-FinCore-Signature: sha256=<hmac>`)
@@ -17,7 +17,7 @@ const logger = createLogger("event-publisher:webhook");
  * - Per-attempt result returned for logging in webhook_delivery_logs
  *
  * Instantiated per-subscriber by EventPublisher.
- * Do NOT use FINANCE_CORE_WEBHOOK_URL env var directly — that is legacy.
+ * Do NOT use FINANCE_CORE_WEBHOOK_URL env var directly - that is legacy.
  * Subscriber config comes from WebhookSubscriptionContract (from DB).
  */
 export class WebhookTransport {

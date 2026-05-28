@@ -15,14 +15,13 @@ import { eq } from "drizzle-orm";
 
 const logger = createLogger("event-publisher:registry");
 
-// 32-byte key for AES-256-GCM derived from APP_SECRET
 const encryptionKey = scryptSync(getConfig("APP_SECRET"), "fincore_salt", 32);
 
 /**
- * WebhookRegistryService — manages webhook subscriber registry.
+ * WebhookRegistryService - manages webhook subscriber registry.
  *
  * DB (`webhook_subscriptions`) is the source of truth.
- * Env vars are a bootstrap shortcut — they get upserted into DB at startup.
+ * Env vars are a bootstrap shortcut - they get upserted into DB at startup.
  *
  * Env var format:
  *   FINCORE_WEBHOOK_<NAME>=<url>|<secret>|<event_filter>
@@ -33,19 +32,14 @@ const encryptionKey = scryptSync(getConfig("APP_SECRET"), "fincore_salt", 32);
  *   FINCORE_WEBHOOK_NOTIF=https://hooks.zapier.com/...|secretDEF|transaction.created,transaction.deleted
  *
  * Legacy support (backward compat):
- *   FINANCE_CORE_WEBHOOK_URL + FINANCE_CORE_WEBHOOK_SECRET → auto-register as "LEGACY"
+ *   FINANCE_CORE_WEBHOOK_URL + FINANCE_CORE_WEBHOOK_SECRET > auto-register as "LEGACY"
  */
 export class WebhookRegistryService {
-  /**
-   * Get all active subscribers for a given event type.
-   * Includes subscribers with ['*'] (wildcard = all events).
-   */
   async getActiveSubscribers(
     eventType: FinancialEventType,
   ): Promise<WebhookSubscriptionContract[]> {
     const db = getDb();
 
-    // Query: is_active = true AND (event_types @> ARRAY['*'] OR event_types @> ARRAY[eventType])
     const rows = await db
       .select()
       .from(webhookSubscriptions)
@@ -63,7 +57,7 @@ export class WebhookRegistryService {
    * Called at app startup.
    * Reads FINCORE_WEBHOOK_<NAME> env vars and upserts them into DB.
    * If a subscription with the same name already exists in DB, it is NOT overwritten
-   * (DB values take precedence — allows manual edits via DB without env override).
+   * (DB values take precedence - allows manual edits via DB without env override).
    */
   async bootstrapFromEnv(): Promise<void> {
     const subscriptions = this.parseEnvSubscriptions();
@@ -103,7 +97,6 @@ export class WebhookRegistryService {
   }): Promise<void> {
     const db = getDb();
 
-    // ON CONFLICT DO NOTHING — existing rows win over env bootstrap
     await db
       .insert(webhookSubscriptions)
       .values({
@@ -160,7 +153,6 @@ export class WebhookRegistryService {
         continue;
       }
 
-      // Parse event filter: "*" or comma-separated event types
       const eventTypes =
         filter === "*" ? ["*"] : filter.split(",").map((e) => e.trim());
 
@@ -208,7 +200,6 @@ export class WebhookRegistryService {
    */
   private decryptSecret(encrypted: string): string {
     if (!encrypted.startsWith("v1:")) {
-      // Fallback for unencrypted legacy / dev secrets
       return encrypted;
     }
 

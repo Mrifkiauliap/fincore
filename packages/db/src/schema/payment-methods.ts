@@ -18,13 +18,10 @@ export const paymentMethods = pgTable(
   "payment_methods",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** NULL = global default, terisi = custom milik user */
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     type: paymentMethodTypeEnum("type").notNull(),
-    /** Emoji atau icon identifier, contoh: "💳", "📱" */
     icon: text("icon"),
-    /** Hex color untuk UI */
     color: text("color"),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

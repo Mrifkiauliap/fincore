@@ -1,4 +1,5 @@
 import { AiExtractionProcessor } from "@/processors/ai-extraction.processor";
+import { BudgetRolloverProcessor } from "@/processors/budget-rollover.processor";
 import { BudgetCheckProcessor } from "@/processors/budget-check.processor";
 import { BudgetCommandProcessor } from "@/processors/budget-command.processor";
 import { ConfirmationProcessor } from "@/processors/confirmation.processor";
@@ -31,6 +32,7 @@ import { Module } from "@nestjs/common";
     MonthlyReportProcessor,
     BudgetCheckProcessor,
     BudgetCommandProcessor,
+    BudgetRolloverProcessor,
     TransactionCommandProcessor,
     CustomCommandProcessor,
     SettingsCommandProcessor,

@@ -25,13 +25,14 @@ export enum ProcessingStatus {
 
 // ─── Job Names ────────────────────────────────────────────────────────────────
 export const JobName = {
+  SEND_WA_MESSAGE: "send-wa-message",
+  SEND_WA_IMAGE: "send-wa-image",
   PROCESS_INCOMING_MESSAGE: "process-incoming-message",
   TRANSCRIBE_VOICE: "transcribe-voice",
   OCR_IMAGE: "ocr-image",
   EXTRACT_TRANSACTION: "extract-transaction",
   CATEGORIZE_TRANSACTION: "categorize-transaction",
   GENERATE_REPORT: "generate-report",
-  SEND_WA_MESSAGE: "send-wa-message",
   CONFIRM_TRANSACTION: "confirm-transaction",
   SETUP_RECURRING: "setup-recurring",
   SEND_RECURRING_REMINDER: "send-recurring-reminder",
@@ -43,6 +44,7 @@ export const JobName = {
   PROCESS_TRANSACTION_COMMAND: "process-transaction-command",
   PROCESS_CUSTOM_COMMAND: "process-custom-command",
   PROCESS_SETTINGS_COMMAND: "process-settings-command",
+  ROLLOVER_BUDGETS: "rollover-budgets",
 } as const;
 
 // ─── Queue Names ─────────────────────────────────────────────────────────────
@@ -64,6 +66,7 @@ export const QueueName = {
   TRANSACTION_COMMAND: "transaction-command",
   CUSTOM_COMMAND: "custom-command",
   SETTINGS_COMMAND: "settings-command",
+  BUDGET_ROLLOVER: "budget-rollover",
 } as const;
 
 // ─── Constants ────────────────────────────────────────────────────────────────

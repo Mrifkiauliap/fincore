@@ -40,10 +40,10 @@ Frekuensi yang didukung (frequency):
 - YEARLY: setiap tahun (butuh day_of_month: 1-31, asumsikan bulan berjalan jika tidak ada)
 
 Contoh:
-- "Ingetin bayar listrik 250rb setiap tanggal 20" → frequency: "MONTHLY", day_of_month: 20
-- "Ingetin sedekah 50k tiap jumat" → frequency: "WEEKLY", day_of_week: 5
-- "Reminder minum obat tiap hari" → frequency: "DAILY"
-- "Ingetin bayar kos tiap tgl 5" → frequency: "MONTHLY", day_of_month: 5
+- "Ingetin bayar listrik 250rb setiap tanggal 20" > frequency: "MONTHLY", day_of_month: 20
+- "Ingetin sedekah 50k tiap jumat" > frequency: "WEEKLY", day_of_week: 5
+- "Reminder minum obat tiap hari" > frequency: "DAILY"
+- "Ingetin bayar kos tiap tgl 5" > frequency: "MONTHLY", day_of_month: 5
 
 Return HANYA JSON:
 {

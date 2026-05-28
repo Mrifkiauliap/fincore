@@ -86,7 +86,7 @@ export class SettingsCommandProcessor extends BaseProcessor {
       return this.handleSetReportTime(chatId, user.id, time);
     }
 
-    // /atur (tanpa argumen) — tampilkan settings saat ini
+    // /atur (tanpa argumen) - tampilkan settings saat ini
     if (lower === p + "atur" || lower === p + "settings") {
       return this.handleShowSettings(chatId, user);
     }
@@ -97,7 +97,7 @@ export class SettingsCommandProcessor extends BaseProcessor {
         `• \`${p}atur timezone Asia/Jakarta\`\n` +
         `• \`${p}atur laporan daily|weekly|monthly|off\`\n` +
         `• \`${p}atur jam 07:00\`\n` +
-        `• \`${p}atur\` — lihat pengaturan saat ini`,
+        `• \`${p}atur\` - lihat pengaturan saat ini`,
     );
   }
 
@@ -138,7 +138,7 @@ export class SettingsCommandProcessor extends BaseProcessor {
 
     await this.sendReply(
       chatId,
-      `✅ Pendaftaran berhasil, *${name}*! Kamu sudah bisa mulai berinteraksi dengan FinCore. Coba kirimkan pencatatan keuangan pertamamu!`,
+      `Pendaftaran berhasil, salam kenal *${name}*! 👋\n\nUntuk memulai, yuk catat saldo awal kamu saat ini.\nContoh ketik:\n_Saldo awal di bank jago 500rb_\natau\n_Isi dompetku sekarang ada 200rb_`,
     );
   }
 
@@ -150,7 +150,7 @@ export class SettingsCommandProcessor extends BaseProcessor {
     // Cek alias
     const resolved = VALID_TZ_ALIASES[tzInput.toLowerCase()] ?? tzInput;
 
-    // Validasi sederhana — format Asia/X atau UTC dll
+    // Validasi sederhana - format Asia/X atau UTC dll
     const isValid =
       /^[A-Za-z]+\/[A-Za-z_]+$/.test(resolved) || resolved === "UTC";
 

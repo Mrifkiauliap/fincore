@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 const logger = createLogger("guard:owner");
 
 /**
- * Owner guard — allows only users registered in the `users` table.
+ * Owner guard - allows only users registered in the `users` table.
  *
  * Checks the sender's WhatsApp number against the users table.
  * Unregistered senders are silently ignored (403 > WAHA retries are suppressed
@@ -51,7 +51,7 @@ export class OwnerOnlyGuard implements CanActivate {
         if (!user.isActive) {
           logger.warn(
             { phone: senderPhone },
-            "Inactive user — message ignored",
+            "Inactive user - message ignored",
           );
           return false;
         }
@@ -67,12 +67,12 @@ export class OwnerOnlyGuard implements CanActivate {
       ) {
         logger.warn(
           { phone: senderPhone },
-          "User not in DB but matches OWNER_PHONE/OWNER_LID — bootstrap mode, allowing",
+          "User not in DB but matches OWNER_PHONE/OWNER_LID - bootstrap mode, allowing",
         );
         return true;
       }
 
-      logger.debug({ phone: senderPhone }, "Unknown sender — silently ignored");
+      logger.debug({ phone: senderPhone }, "Unknown sender - silently ignored");
       return false;
     } catch (err) {
       logger.error({ err }, "DB error in OwnerOnlyGuard, falling back to env");

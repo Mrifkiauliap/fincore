@@ -28,12 +28,12 @@ export const budgets = pgTable(
       .references(() => transactionCategories.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
     currency: text("currency").default("IDR").notNull(),
-    month: integer("month").notNull(), // 1 - 12
-    year: integer("year").notNull(), // e.g. 2026
+    month: integer("month").notNull(),
+    year: integer("year").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     notes: text("notes"),
-    lastWarningSentAt: timestamp("last_warning_sent_at"), // Mencatat waktu peringatan 80%
-    lastAlertSentAt: timestamp("last_alert_sent_at"), // Mencatat waktu alert 100%
+    lastWarningSentAt: timestamp("last_warning_sent_at"),
+    lastAlertSentAt: timestamp("last_alert_sent_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

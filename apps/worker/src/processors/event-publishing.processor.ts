@@ -22,8 +22,6 @@ export class EventPublishingProcessor extends BaseProcessor {
 
   constructor() {
     super("event-publishing.processor");
-    // Instantiate EventPublisher directly.
-    // WebhookRegistryService will manage its own DB connection internally.
     const registry = new WebhookRegistryService();
     this.publisher = new EventPublisher(registry);
   }
@@ -72,7 +70,7 @@ export class EventPublishingProcessor extends BaseProcessor {
         system: "fincore",
         userId: tx.userId,
         rawMessageId: tx.rawMessageId,
-        ingestionMethod: tx.sourceType, // asumsikan sourceType merepresentasikan method
+        ingestionMethod: tx.sourceType,
         confidenceScore: tx.confidenceScore ?? 1,
         isAiGenerated: true,
       },

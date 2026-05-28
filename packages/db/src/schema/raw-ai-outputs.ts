@@ -1,3 +1,4 @@
+import type { AiExtractionOutput } from "@fincore/contracts";
 import {
   boolean,
   index,
@@ -8,7 +9,6 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { AiExtractionOutput } from "@fincore/contracts";
 import { rawMessages } from "./raw-messages";
 
 /**
@@ -23,21 +23,14 @@ export const rawAiOutputs = pgTable(
     rawMessageId: uuid("raw_message_id")
       .notNull()
       .references(() => rawMessages.id, { onDelete: "cascade" }),
-    /** Prompt yang dikirim ke AI provider */
     prompt: text("prompt").notNull(),
-    /** Raw response string dari AI provider */
     response: text("response").notNull(),
-    /** Hasil parsing JSON dari response. Null jika parsing gagal */
     parsedOutput: jsonb("parsed_output").$type<AiExtractionOutput | null>(),
-    /** Contoh: 'sumopod' */
     provider: text("provider").notNull(),
-    /** Contoh: 'gpt-4o-mini' */
     model: text("model").notNull(),
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
-    /** Latency pemrosesan dalam milidetik */
     latencyMs: integer("latency_ms"),
-    /** True jika parsing response berhasil dan output valid */
     isValid: boolean("is_valid").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

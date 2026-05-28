@@ -4,7 +4,7 @@ import { createLogger } from "@fincore/logger";
 const logger = createLogger("event-publisher:noop");
 
 /**
- * NoopTransport — used when there are no active subscribers.
+ * NoopTransport - used when there are no active subscribers.
  *
  * Events are logged but NOT delivered anywhere.
  * `is_published` stays FALSE so they can be replayed via catch-up job
@@ -14,7 +14,7 @@ export class NoopTransport {
   async deliver(event: FinancialEvent): Promise<DeliveryResult> {
     logger.debug(
       { eventId: event.eventId, eventType: event.eventType },
-      "No active subscribers — event not published (will catch up later)",
+      "No active subscribers - event not published (will catch up later)",
     );
 
     return {
