@@ -192,7 +192,7 @@ export class SumopodProvider implements IAiProvider {
           },
         ],
         temperature: 0.7,
-        max_tokens: 128,
+        max_tokens: 100,
       },
       {
         headers: {

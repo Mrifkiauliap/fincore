@@ -11,7 +11,7 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
- CREATE TYPE "public"."processing_status" AS ENUM('pending', 'processing', 'done', 'failed', 'skipped');
+ CREATE TYPE "public"."processing_status" AS ENUM('pending', 'processing', 'pending_confirmation', 'done', 'failed', 'skipped');
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -208,12 +208,12 @@ CREATE TABLE "users" (
 	"name" text,
 	"timezone" text DEFAULT 'Asia/Jakarta',
 	"is_active" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"onboarded_at" timestamp,
 	"report_schedule" text DEFAULT 'monthly',
 	"report_time" text DEFAULT '07:00',
 	"preferred_currency" text DEFAULT 'IDR',
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_phone_unique" UNIQUE("phone")
 );
 --> statement-breakpoint
