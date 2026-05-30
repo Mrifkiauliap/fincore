@@ -12,7 +12,8 @@ export class StorageProvider {
 
   constructor() {
     this.storageType = getConfig("STORAGE_TYPE") ?? "local";
-    this.localUploadDir = resolve(process.cwd(), "../../uploads");
+    this.localUploadDir =
+      getConfig("LOCAL_UPLOAD_DIR") ?? resolve(process.cwd(), "../../uploads");
   }
 
   /**

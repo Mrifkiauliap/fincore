@@ -3,12 +3,12 @@ version: "3.9"
 services:
   # ─── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     container_name: fincore-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: fincore
-      POSTGRES_PASSWORD: fincore
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-fincore_pass}
       POSTGRES_DB: fincore_db
     # ports:
     #   - "5432:5432"
@@ -45,8 +45,8 @@ services:
     image: deadly0/bull-board
     container_name: fincore-bull-board
     restart: unless-stopped
-    # ports:
-    #   - "3010:3000"
+    ports:
+      - "3015:3000"
     networks:
       - fincore_net
     environment:
@@ -73,46 +73,56 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
 
   # ─── API (uncomment for containerized dev) ───────────────────────────────────
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: infrastructure/docker/api.Dockerfile
-  #   container_name: fincore-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - '3000:3000'
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     valkey:
-  #       condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: fincore-api
+    restart: unless-stopped
+    # ports:
+    # - "3015:3000"
+    env_file: .env
+    volumes:
+      - ${LOCAL_UPLOAD_DIR}:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - fincore_net
 
   # ─── Worker (uncomment for containerized dev) ─────────────────────────────────
-  # worker:
-  #   build:
-  #     context: .
-  #     dockerfile: infrastructure/docker/worker.Dockerfile
-  #   container_name: fincore-worker
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     valkey:
-  #       condition: service_healthy
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/worker.Dockerfile
+    container_name: fincore-worker
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ${LOCAL_UPLOAD_DIR}:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - fincore_net
 
   # ─── Sender (uncomment for containerized dev) ─────────────────────────────────
-  # sender:
-  #   build:
-  #     context: .
-  #     dockerfile: infrastructure/docker/sender.Dockerfile
-  #   container_name: fincore-sender
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   depends_on:
-  #     valkey:
-  #       condition: service_healthy
+  sender:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/sender.Dockerfile
+    container_name: fincore-sender
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - fincore_net
 
 volumes:
   postgres_data:

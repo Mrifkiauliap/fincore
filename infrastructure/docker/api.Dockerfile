@@ -10,7 +10,7 @@ RUN turbo prune --scope=@fincore/api --docker
 
 # Stage 2: Install dependencies and build
 FROM node:22-alpine AS installer
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
 # Install pnpm
@@ -24,6 +24,8 @@ RUN pnpm install --frozen-lockfile
 
 # Build the project
 COPY --from=builder /app/out/full/ .
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/turbo.json ./turbo.json
 RUN pnpm turbo run build --filter=@fincore/api...
 
 # Stage 3: Runner
