@@ -82,6 +82,8 @@ services:
     # ports:
     # - "3015:3000"
     env_file: .env
+    volumes:
+      - ${LOCAL_UPLOAD_DIR}:/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,6 +100,8 @@ services:
     container_name: fincore-worker
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - ${LOCAL_UPLOAD_DIR}:/uploads
     depends_on:
       postgres:
         condition: service_healthy
