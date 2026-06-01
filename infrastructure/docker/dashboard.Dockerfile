@@ -14,7 +14,7 @@ RUN corepack enable
 RUN npm install -g turbo@^2
 
 COPY . .
-RUN turbo prune dashboard --docker
+RUN turbo prune @fincore/dashboard --docker
 
 FROM base AS installer
 RUN apk update && apk add --no-cache libc6-compat
@@ -32,7 +32,7 @@ RUN pnpm install --frozen-lockfile
 COPY --from=builder /app/out/full/ .
 
 # Build the project and its dependencies
-RUN pnpm turbo run build --filter=dashboard...
+RUN pnpm turbo run build --filter=@fincore/dashboard...
 
 FROM base AS runner
 WORKDIR /app
