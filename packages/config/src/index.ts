@@ -121,12 +121,22 @@ export default function getConfig<K extends keyof AppConfig>(
     const parsed = envSchema.safeParse(process.env);
 
     if (!parsed.success) {
-      console.error("❌ Invalid environment variables:");
-      console.error(parsed.error.flatten().fieldErrors);
-      process.exit(1);
+      if (
+        process.env.SKIP_ENV_VALIDATION === "1" ||
+        process.env.SKIP_ENV_VALIDATION === "true"
+      ) {
+        console.warn(
+          "⚠️ Skipping environment validation due to SKIP_ENV_VALIDATION",
+        );
+        _config = process.env as unknown as AppConfig;
+      } else {
+        console.error("❌ Invalid environment variables:");
+        console.error(parsed.error.flatten().fieldErrors);
+        process.exit(1);
+      }
+    } else {
+      _config = parsed.data;
     }
-
-    _config = parsed.data;
   }
 
   if (key) return _config[key];
