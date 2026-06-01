@@ -122,6 +122,8 @@ export default function getConfig<K extends keyof AppConfig>(
 
     if (!parsed.success) {
       if (
+        process.env.NEXT_PUBLIC_SKIP_ENV_VALIDATION === "1" ||
+        process.env.NEXT_PUBLIC_SKIP_ENV_VALIDATION === "true" ||
         process.env.SKIP_ENV_VALIDATION === "1" ||
         process.env.SKIP_ENV_VALIDATION === "true"
       ) {
