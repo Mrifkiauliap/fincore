@@ -124,6 +124,24 @@ services:
     networks:
       - fincore_net
 
+  # ─── Dashboard (uncomment for containerized dev) ──────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/dashboard.Dockerfile
+    container_name: fincore-dashboard
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - fincore_net
+
 volumes:
   postgres_data:
   valkey_data:

@@ -1,7 +1,7 @@
 import { BaseProcessor } from "@/processors/base.processor";
 import getConfig from "@fincore/config";
 import { getDb, transactions, users } from "@fincore/db";
-import { createValkeyConnection, enqueue } from "@fincore/queue";
+import { createValkeyConnection, sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
@@ -61,7 +61,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       .limit(1);
 
     if (!user) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         "Pengguna tidak ditemukan. Kirim pesan apapun terlebih dahulu untuk registrasi.",
       );
@@ -107,7 +107,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       return;
     }
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       "❓ Perintah tidak dikenali.\n\nContoh:\n" +
         `• \`${this.prefix}hapus\` - hapus transaksi terakhir\n` +
@@ -134,10 +134,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       .limit(1);
 
     if (!last) {
-      return this.sendReply(
-        chatId,
-        "ℹ️ Tidak ada transaksi yang bisa dihapus.",
-      );
+      return sendWaMessage(chatId, "ℹ️ Tidak ada transaksi yang bisa dihapus.");
     }
 
     const formatter = new Intl.NumberFormat("id-ID", {
@@ -162,7 +159,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       JSON.stringify(state),
     );
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       `🗑️ Hapus transaksi berikut?\n\n${description}\n\nBalas *ya* untuk konfirmasi atau *tidak* untuk batal.`,
     );
@@ -189,7 +186,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       .limit(5);
 
     if (candidates.length === 0) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `ℹ️ Tidak ada transaksi dengan kata kunci *"${query}"*.`,
       );
@@ -225,7 +222,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       JSON.stringify(state),
     );
 
-    await this.sendReply(chatId, reply);
+    await sendWaMessage(chatId, reply);
   }
 
   // ─── KONFIRMASI TRANSAKSI PENDING ─────────────────────────────────────────
@@ -245,7 +242,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       .limit(10);
 
     if (pending.length === 0) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         "✅ Tidak ada transaksi yang menunggu konfirmasi.",
       );
@@ -280,7 +277,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       JSON.stringify(state),
     );
 
-    await this.sendReply(chatId, reply);
+    await sendWaMessage(chatId, reply);
   }
 
   // ─── EDIT TRANSAKSI (/ubah) ───────────────────────────────────────────────────
@@ -305,7 +302,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       .limit(5);
 
     if (candidates.length === 0) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `Tidak ada transaksi dengan kata kunci *"${query}"*.`,
       );
@@ -334,7 +331,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       PENDING_ACTION_TTL,
       JSON.stringify(state),
     );
-    await this.sendReply(chatId, reply);
+    await sendWaMessage(chatId, reply);
   }
 
   /** Proses input perubahan setelah user pilih transaksi */
@@ -361,7 +358,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
     }
 
     if (!newAmount && !newName) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         "Format tidak dikenali. Contoh:\n• `50000` - ubah nominal\n• `Makan Bakso` - ubah nama\n• `50000 Makan Bakso` - ubah keduanya",
       );
@@ -394,7 +391,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       parts.push(`nominal > *${fmt.format(newAmount)}*`);
     }
 
-    return this.sendReply(chatId, `Transaksi diperbarui: ${parts.join(", ")}.`);
+    return sendWaMessage(chatId, `Transaksi diperbarui: ${parts.join(", ")}.`);
   }
 
   // ─── HANDLE JAWABAN ATAS PENDING ACTION ───────────────────────────────────────────
@@ -412,14 +409,14 @@ export class TransactionCommandProcessor extends BaseProcessor {
 
     if (isCancelled) {
       await this.valkey.del(pendingActionKey(chatId));
-      return this.sendReply(chatId, "Oke, dibatalkan.");
+      return sendWaMessage(chatId, "Oke, dibatalkan.");
     }
 
     // ─── ubah_select: user pilih nomor transaksi yg mau diedit
     if (state.action === "ubah_select") {
       const num = parseInt(answer.trim(), 10);
       if (isNaN(num) || num < 1 || num > state.transactionIds.length) {
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           `Masukkan nomor antara 1–${state.transactionIds.length} atau *batal*.`,
         );
@@ -451,7 +448,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
         currency: "IDR",
         minimumFractionDigits: 0,
       });
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `Mengubah: *${tx?.name}* (${fmt.format(Number(tx?.totalAmount ?? 0))})\n\n` +
           `Ketik nilai baru. Contoh:\n` +
@@ -472,7 +469,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
         answer.trim(),
       );
       if (!isConfirmed) {
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           "Balas *ya* untuk konfirmasi hapus, atau *tidak* untuk batal.",
         );
@@ -489,7 +486,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
         );
 
       await this.valkey.del(pendingActionKey(chatId));
-      return this.sendReply(chatId, "🗑️ Transaksi berhasil dihapus.");
+      return sendWaMessage(chatId, "🗑️ Transaksi berhasil dihapus.");
     }
 
     if (state.action === "select_candidate") {
@@ -506,7 +503,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
             ),
           );
         await this.valkey.del(pendingActionKey(chatId));
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           "✅ Semua transaksi berhasil dikonfirmasi.",
         );
@@ -515,7 +512,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
       // Pilih nomor
       const num = parseInt(answer.trim(), 10);
       if (isNaN(num) || num < 1 || num > state.transactionIds.length) {
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           `⚠️ Masukkan nomor antara 1–${state.transactionIds.length} atau *batal*.`,
         );
@@ -536,7 +533,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
 
       if (!tx) {
         await this.valkey.del(pendingActionKey(chatId));
-        return this.sendReply(chatId, "Transaksi tidak ditemukan.");
+        return sendWaMessage(chatId, "Transaksi tidak ditemukan.");
       }
 
       if (!tx.isConfirmed) {
@@ -547,7 +544,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
           .where(eq(transactions.id, selectedId));
 
         await this.valkey.del(pendingActionKey(chatId));
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           `✅ Transaksi *${tx.name}* berhasil dikonfirmasi.`,
         );
@@ -563,7 +560,7 @@ export class TransactionCommandProcessor extends BaseProcessor {
           PENDING_ACTION_TTL,
           JSON.stringify(newState),
         );
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           `🗑️ Yakin ingin hapus transaksi *${tx.name}*?\nBalas *ya* atau *tidak*.`,
         );
@@ -580,12 +577,5 @@ export class TransactionCommandProcessor extends BaseProcessor {
       .where(eq(users.id, userId))
       .limit(1);
     return user?.timezone ?? "Asia/Jakarta";
-  }
-
-  private async sendReply(chatId: string, text: string): Promise<void> {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
   }
 }

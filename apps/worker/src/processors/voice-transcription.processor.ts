@@ -2,7 +2,7 @@ import { BaseProcessor } from "@/processors/base.processor";
 import { FinanceGuardrail, GroqWhisperProvider } from "@fincore/ai";
 import getConfig from "@fincore/config";
 import { aiProcessingLogs, getDb, rawMessages } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
@@ -72,10 +72,10 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         })
         .where(eq(rawMessages.id, data.rawMessageId));
 
-      await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-        chatId: data.from,
-        text: "Voice note terlalu panjang/besar (>5MB). Kirim pesan suara yang lebih singkat ya, cukup sebutkan transaksinya saja 🙏",
-      });
+      await sendWaMessage(
+        data.from,
+        "Voice note terlalu panjang/besar (>5MB). Kirim pesan suara yang lebih singkat ya, cukup sebutkan transaksinya saja 🙏",
+      );
       return;
     }
 
@@ -160,10 +160,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
           .where(eq(rawMessages.id, data.rawMessageId));
 
         // Reply to user
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: data.from,
-          text: guardrail.getOutOfScopeReply(),
-        });
+        await sendWaMessage(data.from, guardrail.getOutOfScopeReply());
         return;
       }
 

@@ -1,8 +1,8 @@
 import { BaseProcessor } from "@/processors/base.processor";
 import getConfig from "@fincore/config";
 import { getDb, recurringBills, users } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
-import { JobName, QueueName } from "@fincore/shared";
+import { sendWaMessage } from "@fincore/queue";
+import { QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
 import { Job } from "bullmq";
@@ -76,7 +76,7 @@ export class RecurringSetupProcessor extends BaseProcessor {
       .limit(1);
 
     if (!user) {
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         "Akun kamu belum terdaftar. Kirimkan pesan transaksi dulu ya.",
       );
@@ -86,7 +86,7 @@ export class RecurringSetupProcessor extends BaseProcessor {
     // ── 2. Parse via AI ────────────────────────────────────────────────────────
     const parsed = await this.parseRecurringBill(message);
     if (!parsed) {
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         "Maaf, aku tidak bisa memahami pengingat tagihan itu.\n\n" +
           'Contoh: _"Ingetin bayar listrik 250rb setiap tanggal 20"_',
@@ -143,7 +143,7 @@ export class RecurringSetupProcessor extends BaseProcessor {
       freqStr = `setiap tahun tanggal ${parsed.day_of_month}`;
     }
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       `Pengingat tagihan disimpan!\n\n` +
         `Tagihan: ${parsed.name}${amountStr}\n` +
@@ -230,12 +230,5 @@ export class RecurringSetupProcessor extends BaseProcessor {
       this.logger.warn({ err }, "Failed to parse recurring bill");
       return null;
     }
-  }
-
-  private async sendReply(chatId: string, text: string): Promise<void> {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
   }
 }

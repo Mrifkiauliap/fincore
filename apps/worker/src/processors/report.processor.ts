@@ -8,8 +8,8 @@ import {
   transactions,
   users,
 } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
-import { JobName, QueueName } from "@fincore/shared";
+import { sendWaImage, sendWaMessage } from "@fincore/queue";
+import { QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
 import { Job } from "bullmq";
@@ -206,7 +206,7 @@ export class ReportProcessor extends BaseProcessor {
       .limit(1);
 
     if (!user) {
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         "Akun kamu belum terdaftar. Kirimkan pesan transaksi dulu ya.",
       );
@@ -257,7 +257,7 @@ export class ReportProcessor extends BaseProcessor {
       );
     }
 
-    await this.sendReply(chatId, reply);
+    await sendWaMessage(chatId, reply);
 
     // ─── Generate Pie Chart (summary / by_category) ───────────────────────────
     if (
@@ -298,10 +298,7 @@ export class ReportProcessor extends BaseProcessor {
             `Pengeluaran ${periodLabel}`,
           );
 
-          await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_IMAGE, {
-            chatId,
-            imageUrl: chartUrl,
-          });
+          await sendWaImage(chatId, chartUrl);
         }
       } catch (err) {
         this.logger.warn({ err }, "Failed to generate chart (non-fatal)");
@@ -796,12 +793,5 @@ export class ReportProcessor extends BaseProcessor {
       this.logger.warn({ err }, "Query parsing failed, using defaults");
       return defaults;
     }
-  }
-
-  private async sendReply(chatId: string, text: string): Promise<void> {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
   }
 }

@@ -3,12 +3,15 @@ export * from "./enums";
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 export * from "./ai-processing-logs";
+export * from "./budgets";
+export * from "./enums";
 export * from "./payment-methods";
 export * from "./raw-ai-outputs";
 export * from "./raw-messages";
 export * from "./recurring-bills";
+export * from "./relations";
 export * from "./reports";
-export * from "./budgets";
+export * from "./sessions";
 export * from "./transaction-categories";
 export * from "./transaction-tag-mappings";
 export * from "./transaction-tags";

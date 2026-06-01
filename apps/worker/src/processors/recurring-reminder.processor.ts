@@ -1,6 +1,6 @@
 import { BaseProcessor } from "@/processors/base.processor";
 import { getDb, recurringBills, users } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { createValkeyConnection, sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import {
   computeNextReminderDate,
@@ -39,7 +39,6 @@ export class RecurringReminderProcessor
    */
   async onModuleInit(): Promise<void> {
     const { Queue } = await import("bullmq");
-    const { createValkeyConnection } = await import("@fincore/queue");
 
     const queue = new Queue(QueueName.RECURRING_REMINDER, {
       connection: createValkeyConnection(),
@@ -103,10 +102,7 @@ export class RecurringReminderProcessor
         `Tagihan *${bill.name}*${amountStr} jatuh tempo ${dueDateStr}.\n\n` +
         `Jangan lupa bayar ya!`;
 
-      await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-        chatId,
-        text: reminderText,
-      });
+      await sendWaMessage(chatId, reminderText);
 
       this.logger.info(
         { billId: bill.id, name: bill.name, phone: userPhone },

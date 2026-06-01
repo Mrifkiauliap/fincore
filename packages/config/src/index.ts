@@ -42,6 +42,12 @@ const envSchema = z
     WAHA_BASE_URL: z.string().url(),
     WAHA_API_KEY: z.string().min(1),
     WAHA_SESSION: z.string().default("default"),
+    WAHA_BOT_NUMBER: z
+      .string()
+      .min(
+        1,
+        "WAHA_BOT_NUMBER wajib diisi agar link WhatsApp Dashboard bekerja",
+      ),
     WAHA_WEBHOOK_HMAC_KEY: z.string().optional(),
 
     // AI
@@ -82,6 +88,9 @@ const envSchema = z
 
     // Worker
     WORKER_CONCURRENCY: z.coerce.number().default(5),
+
+    // Dashboard
+    DASHBOARD_URL: z.string().url().default("http://localhost:3001"),
   })
   .superRefine((data, ctx) => {
     // LOCAL_UPLOAD_DIR hanya wajib saat STORAGE_TYPE=local

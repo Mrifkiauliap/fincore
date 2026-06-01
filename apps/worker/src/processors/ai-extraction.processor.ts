@@ -13,7 +13,7 @@ import {
   transactionTagMappings,
   transactionTags,
 } from "@fincore/db";
-import { createValkeyConnection, enqueue } from "@fincore/queue";
+import { createValkeyConnection, enqueue, sendWaMessage } from "@fincore/queue";
 import {
   JobName,
   MessageType,
@@ -211,7 +211,11 @@ export class AiExtractionProcessor extends BaseProcessor {
     const pendingIds: string[] = [];
     const savedSummaries: string[] = [];
     const pendingSummaries: string[] = [];
-    const pendingReasons: ("low_confidence" | "suspicious_amount")[] = [];
+    const pendingReasons: (
+      | "low_confidence"
+      | "suspicious_amount"
+      | "missing_payment_method"
+    )[] = [];
 
     for (const extracted of extractedList) {
       if (extracted.confidence_score < CONFIDENCE_MIN) {
@@ -345,6 +349,8 @@ export class AiExtractionProcessor extends BaseProcessor {
         pendingSummaries.push(summaryLine);
         if (confirmationReason === "suspicious_amount") {
           pendingReasons.push("suspicious_amount");
+        } else if (confirmationReason === "missing_payment_method") {
+          pendingReasons.push("missing_payment_method");
         } else {
           pendingReasons.push("low_confidence");
         }
@@ -410,7 +416,7 @@ export class AiExtractionProcessor extends BaseProcessor {
         | "missing_payment_method"
       )[],
     );
-    await this.sendReply(data.from, replyText);
+    await sendWaMessage(data.from, replyText, data.rawMessageId);
   }
 
   // ─── Reply builders ────────────────────────────────────────────────────────
@@ -725,7 +731,7 @@ export class AiExtractionProcessor extends BaseProcessor {
       .where(eq(rawMessages.id, rawMessageId));
 
     // 4. Send reply
-    await this.sendReply(chatId, this.getExtractionErrorReply());
+    await sendWaMessage(chatId, this.getExtractionErrorReply(), rawMessageId);
   }
 
   private async markFailed(
@@ -741,13 +747,6 @@ export class AiExtractionProcessor extends BaseProcessor {
         processedAt: new Date(),
       })
       .where(eq(rawMessages.id, rawMessageId));
-  }
-
-  private async sendReply(chatId: string, text: string): Promise<void> {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
   }
 
   private getExtractionErrorReply(): string {
