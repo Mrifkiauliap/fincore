@@ -11,7 +11,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 # Install turbo
-RUN pnpm install -g turbo@^2
+RUN npm install -g turbo@^2
 
 COPY . .
 RUN turbo prune dashboard --docker
