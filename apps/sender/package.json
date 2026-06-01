@@ -8,7 +8,7 @@
     "start": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf tsconfig.tsbuildinfo "
   },
   "dependencies": {
     "@fincore/contracts": "workspace:*",

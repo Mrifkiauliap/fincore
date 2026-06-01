@@ -8,7 +8,7 @@ import {
   users,
   type ReportData,
 } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
@@ -312,10 +312,7 @@ export class MonthlyReportProcessor extends BaseProcessor {
     }
 
     // 8. Kirim via WA
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId: user.phone,
-      text: messageStr,
-    });
+    await sendWaMessage(user.phone, messageStr);
 
     // 9. Tandai Laporan Terkirim
     await this.db

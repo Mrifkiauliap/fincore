@@ -23,38 +23,47 @@ export interface IntentResult {
 }
 
 // ─── Prompt ───────────────────────────────────────────────────────────────────
-const GUARDRAIL_SYSTEM_PROMPT = `
-Kamu adalah classifier intent untuk aplikasi pencatat keuangan personal berbasis WhatsApp bernama FinCore.
-FinCore HANYA menangani hal-hal berikut:
-1. Pencatatan transaksi keuangan (pengeluaran, pemasukan, transfer)
-2. Query laporan keuangan pribadi ("berapa pengeluaranku...", "rangkum bulan ini...")
-3. Command aplikasi (hapus, bantuan, laporan harian/mingguan/bulanan)
-4. Sapaan singkat
-
-FinCore TIDAK menangani:
-- Pertanyaan umum (cuaca, berita, resep, jadwal, dsb)
-- Pembuatan konten (puisi, cerita, esai, dsb)
-- Percakapan non-keuangan
-- Informasi yang tidak berkaitan dengan keuangan pribadi user ini
-
-Klasifikasikan pesan berikut ke salah satu intent:
-- LOG_TRANSACTION: user mencatat transaksi (beli, bayar, terima uang, transfer, dll)
-- QUERY_REPORT: user bertanya tentang keuangannya (berapa, rangkum, lihat, cek saldo)
-- COMMAND: perintah eksplisit (hapus, laporan, kategori, bantuan, help)
-- GREETING: sapaan biasa (halo, hai, pagi, selamat)
-- CONFIRMATION_REPLY: jawaban ya/tidak untuk konfirmasi transaksi (ya, oke, tidak, batal, benar, salah)
-- SETUP_RECURRING: setup pengingat tagihan berulang (ingetin, reminder, tagihan setiap, bayar rutin)
-- OUT_OF_SCOPE: apapun di luar keuangan pribadi
-
-Return HANYA JSON:
-{
-  "intent": "LOG_TRANSACTION" | "QUERY_REPORT" | "COMMAND" | "GREETING" | "CONFIRMATION_REPLY" | "SETUP_RECURRING" | "OUT_OF_SCOPE",
-  "confidence": 0.0-1.0,
-  "reason": "alasan singkat dalam Bahasa Indonesia",
-  "extracted_query": "string atau null (hanya untuk QUERY_REPORT: versi bersih query)",
-  "short_ack_message": "string (opsional, hanya untuk QUERY_REPORT. Contoh: 'Sedang mengecek pengeluaran bulan ini...', 'Sedang merekap saldo...', dll. Tanpa emoji.)"
-}
-`.trim();
+const GUARDRAIL_SYSTEM_PROMPT = [
+  "Kamu adalah classifier intent untuk aplikasi pencatat keuangan personal berbasis WhatsApp bernama FinCore.",
+  "",
+  "FinCore HANYA menangani:",
+  "1. Pencatatan transaksi keuangan (pengeluaran, pemasukan, transfer)",
+  '2. Query laporan keuangan pribadi ("berapa pengeluaranku...", "rangkum bulan ini...")',
+  "3. Command aplikasi (hapus, bantuan, laporan harian/mingguan/bulanan)",
+  "4. Sapaan singkat",
+  "5. Setup pengingat tagihan berulang",
+  "",
+  "FinCore TIDAK menangani:",
+  "- Pertanyaan umum (cuaca, berita, resep, jadwal, dsb)",
+  "- Pembuatan konten (puisi, cerita, esai, dsb)",
+  "- Percakapan non-keuangan",
+  "- Informasi yang tidak berkaitan dengan keuangan pribadi user",
+  "",
+  "PENTING — Klasifikasikan sebagai LOG_TRANSACTION untuk:",
+  '- "patungan bareng temen buat beli baju" > tetap transaksi (yang dibeli adalah baju)',
+  '- "beliin temen makan siang 50rb" > tetap transaksi (yang dibeli adalah makanan)',
+  '- "aku bayarin bensin temen" > tetap transaksi (yang dibeli adalah bensin)',
+  '- "transfer uang buat patungan" > tetap transaksi (konteksnya transfer)',
+  "> Klasifikasikan berdasarkan ADA/TIDAKNYA nominal & aktivitas keuangan, BUKAN konteks sosialnya.",
+  "",
+  "Klasifikasikan pesan ke salah satu intent:",
+  "- LOG_TRANSACTION: user mencatat transaksi — ada nominal + aktivitas beli/bayar/terima/transfer, termasuk patungan, beliin orang lain, atau nitip",
+  "- QUERY_REPORT: user bertanya tentang kondisi keuangannya sendiri (berapa pengeluaran, rangkum, cek saldo, laporan, summary)",
+  "- COMMAND: perintah eksplisit ke aplikasi (hapus, bantuan/help, atur, settings, lihat kategori)",
+  "- GREETING: sapaan biasa TANPA ada nominal transaksi (halo, hai, pagi, selamat pagi/siang/sore/malam)",
+  "- CONFIRMATION_REPLY: jawaban ya/tidak/setuju/batal untuk konfirmasi yang dikirim FinCore",
+  "- SETUP_RECURRING: setup pengingat tagihan berulang (ingetin, reminder, tagihan setiap bulan, bayar rutin)",
+  "- OUT_OF_SCOPE: apapun yang BENAR-BENAR di luar keuangan pribadi — tidak ada nominal, tidak ada query keuangan, bukan command",
+  "",
+  "Return HANYA JSON:",
+  "{",
+  '  "intent": "LOG_TRANSACTION",',
+  '  "confidence": 0.95,',
+  '  "reason": "alasan singkat dalam Bahasa Indonesia",',
+  '  "extracted_query": null,',
+  '  "short_ack_message": null',
+  "}",
+].join("\n");
 
 // ─── Guardrail Service ────────────────────────────────────────────────────────
 export class FinanceGuardrail {
@@ -194,6 +203,34 @@ export class FinanceGuardrail {
         confidence: 0.95,
         reason: "Recurring bill setup detected",
       };
+    }
+
+    // ── Out-of-scope fast-path: catch jelas-jelas non-keuangan ───────────────
+    const outOfScopePatterns = [
+      // General knowledge / trivia
+      /\b(cuaca|hujan|panas|cerah|mendung)\b.*\b(bagaimana|gimana|hari ini|besok)\b/i,
+      /\b(resep|masak|goreng|rebus)\b.*\b(bagaimana|cara|gimana)\b/i,
+      /\b(berita|news|headline|artikel)\b/i,
+      // Content generation
+      /\b(buat|buatin|tulis|tulisin)\b.*\b(puisi|cerita|sajak|pantun|cerpen|esai|lirik|lagu)\b/i,
+      /\b(buat|buatin|tulis|tulisin)\b.*\b(kode|script|coding|program)\b/i,
+      // Non-finance questions
+      /\b(siapa|apa itu|kenapa|mengapa)\b.*\b(presiden|ibukota|planet|bintang|galaksi|sejarah|filosofi)\b/i,
+      // Entertainment / random chat
+      /\b(ceritain|dongeng|tebak|game|main|lucu)\b/i,
+      // Religion / politics
+      /\b(agama|politik|pemilu|partai|kandidat)\b/i,
+    ];
+
+    for (const pattern of outOfScopePatterns) {
+      if (pattern.test(lower)) {
+        logger.debug({ message }, "Fast-path OUT_OF_SCOPE detected");
+        return {
+          intent: MessageIntent.OUT_OF_SCOPE,
+          confidence: 0.98,
+          reason: "Fast-path: clearly non-financial content",
+        };
+      }
     }
 
     // ── Explicit commands ─────────────────────────────────────────────────────

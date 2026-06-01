@@ -9,7 +9,7 @@ import {
   transactions,
   users,
 } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
@@ -48,7 +48,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       .limit(1);
 
     if (!user) {
-      return this.sendReply(chatId, "Pengguna tidak ditemukan.");
+      return sendWaMessage(chatId, "Pengguna tidak ditemukan.");
     }
 
     const lower = commandText.toLowerCase().trim();
@@ -86,7 +86,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       return this.handleSearch(chatId, user.id, query);
     }
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       "❓ Contoh penggunaan:\n" +
         `• \`${p}tambah metode BCA Tabungan\`\n` +
@@ -126,7 +126,7 @@ export class CustomCommandProcessor extends BaseProcessor {
         );
 
       if (matchingTags.length === 0) {
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           `Tidak ada transaksi dengan tag *#${cleanQuery}*.`,
         );
@@ -140,7 +140,7 @@ export class CustomCommandProcessor extends BaseProcessor {
 
       const txIds = [...new Set(mappings.map((m) => m.transactionId))];
       if (txIds.length === 0) {
-        return this.sendReply(
+        return sendWaMessage(
           chatId,
           `Tidak ada transaksi dengan tag *#${cleanQuery}*.`,
         );
@@ -197,7 +197,7 @@ export class CustomCommandProcessor extends BaseProcessor {
     }
 
     if (results.length === 0) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `Tidak ada transaksi yang cocok dengan *"${query}"*.`,
       );
@@ -225,7 +225,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       reply += `  ${date}\n\n`;
     }
 
-    await this.sendReply(chatId, reply.trim());
+    await sendWaMessage(chatId, reply.trim());
   }
 
   // ─── HANDLERS ─────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ export class CustomCommandProcessor extends BaseProcessor {
 
     const name = nameParts.join(" ").trim();
     if (!name || name.length < 2) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `⚠️ Nama terlalu pendek. Contoh: \`${this.prefix}tambah metode BCA Tabungan\` atau \`${this.prefix}tambah metode Uang Tunai cash\``,
       );
@@ -298,10 +298,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       .limit(1);
 
     if (existing) {
-      return this.sendReply(
-        chatId,
-        `⚠️ Metode pembayaran *${name}* sudah ada.`,
-      );
+      return sendWaMessage(chatId, `⚠️ Metode pembayaran *${name}* sudah ada.`);
     }
 
     let icon = "💳";
@@ -318,7 +315,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       isActive: true,
     });
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       `✅ Metode pembayaran *${name}* (${type.replace("_", " ")}) berhasil ditambahkan.`,
     );
@@ -347,7 +344,7 @@ export class CustomCommandProcessor extends BaseProcessor {
 
     const name = nameParts.join(" ").trim();
     if (!name || name.length < 2) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `⚠️ Format salah. Contoh: \`${this.prefix}tambah kategori Langganan Streaming expense\``,
       );
@@ -373,7 +370,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       .limit(1);
 
     if (existing) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `⚠️ Kategori *${name}* untuk tipe *${type}* sudah ada.`,
       );
@@ -397,7 +394,7 @@ export class CustomCommandProcessor extends BaseProcessor {
           ? "pemasukan"
           : "transfer";
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       `✅ Kategori *${name}* (${typeLabel}) berhasil ditambahkan.`,
     );
@@ -416,10 +413,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       .orderBy(asc(paymentMethods.name));
 
     if (methods.length === 0) {
-      return this.sendReply(
-        chatId,
-        "ℹ️ Belum ada metode pembayaran tersimpan.",
-      );
+      return sendWaMessage(chatId, "ℹ️ Belum ada metode pembayaran tersimpan.");
     }
 
     const globals = [];
@@ -445,7 +439,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       }
     }
 
-    await this.sendReply(chatId, reply.trim());
+    await sendWaMessage(chatId, reply.trim());
   }
 
   private async handleListCategories(
@@ -487,7 +481,7 @@ export class CustomCommandProcessor extends BaseProcessor {
       );
 
     if (cats.length === 0) {
-      return this.sendReply(chatId, "ℹ️ Belum ada kategori tersimpan.");
+      return sendWaMessage(chatId, "ℹ️ Belum ada kategori tersimpan.");
     }
 
     const grouped: Record<string, typeof cats> = {};
@@ -512,15 +506,8 @@ export class CustomCommandProcessor extends BaseProcessor {
       reply += `\n`;
     }
 
-    await this.sendReply(chatId, reply.trim());
+    await sendWaMessage(chatId, reply.trim());
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────
-
-  private async sendReply(chatId: string, text: string): Promise<void> {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
-  }
 }

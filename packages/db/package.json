@@ -11,7 +11,7 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/seed.ts",
-    "clean": "rm -rf dist drizzle"
+    "clean": "rm -rf tsconfig.tsbuildinfo drizzle"
   },
   "dependencies": {
     "@fincore/config": "workspace:*",

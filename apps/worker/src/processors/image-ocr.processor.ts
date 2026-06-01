@@ -2,7 +2,7 @@ import { BaseProcessor } from "@/processors/base.processor";
 import { FinanceGuardrail, GeminiVisionProvider } from "@fincore/ai";
 import getConfig from "@fincore/config";
 import { aiProcessingLogs, getDb, rawMessages } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { StorageProvider } from "@fincore/storage";
 import { Injectable } from "@nestjs/common";
@@ -76,10 +76,10 @@ export class ImageOcrProcessor extends BaseProcessor {
           })
           .where(eq(rawMessages.id, data.rawMessageId));
 
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: data.from,
-          text: "Ukuran dokumen PDF terlalu besar (>10MB). Mohon kirim dokumen yang lebih kecil ya! 🙏",
-        });
+        await sendWaMessage(
+          data.from,
+          "Ukuran dokumen PDF terlalu besar (>10MB). Mohon kirim dokumen yang lebih kecil ya! 🙏",
+        );
         return;
       }
     } else {
@@ -93,10 +93,10 @@ export class ImageOcrProcessor extends BaseProcessor {
           })
           .where(eq(rawMessages.id, data.rawMessageId));
 
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: data.from,
-          text: "Ukuran gambar terlalu besar (>5MB). Mohon kirim gambar yang lebih kecil ya! 🙏",
-        });
+        await sendWaMessage(
+          data.from,
+          "Ukuran gambar terlalu besar (>5MB). Mohon kirim gambar yang lebih kecil ya! 🙏",
+        );
         return;
       }
     }
@@ -207,10 +207,7 @@ export class ImageOcrProcessor extends BaseProcessor {
           })
           .where(eq(rawMessages.id, data.rawMessageId));
 
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: data.from,
-          text: guardrail.getOutOfScopeReply(),
-        });
+        await sendWaMessage(data.from, guardrail.getOutOfScopeReply());
         return;
       }
 

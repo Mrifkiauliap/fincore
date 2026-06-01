@@ -94,28 +94,3 @@ export const transactions = pgTable(
 
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
-
-import { relations } from "drizzle-orm";
-
-export const transactionsRelations = relations(transactions, ({ one }) => ({
-  user: one(users, {
-    fields: [transactions.userId],
-    references: [users.id],
-  }),
-  rawMessage: one(rawMessages, {
-    fields: [transactions.rawMessageId],
-    references: [rawMessages.id],
-  }),
-  category: one(transactionCategories, {
-    fields: [transactions.categoryId],
-    references: [transactionCategories.id],
-  }),
-  paymentMethod: one(paymentMethods, {
-    fields: [transactions.paymentMethodId],
-    references: [paymentMethods.id],
-  }),
-  toPaymentMethod: one(paymentMethods, {
-    fields: [transactions.toPaymentMethodId],
-    references: [paymentMethods.id],
-  }),
-}));

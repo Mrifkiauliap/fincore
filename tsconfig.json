@@ -19,5 +19,11 @@
       "@/*": ["apps/api/src/*", "apps/worker/src/*", "apps/sender/src/*"]
     }
   },
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "apps/dashboard"
+  ]
 }
