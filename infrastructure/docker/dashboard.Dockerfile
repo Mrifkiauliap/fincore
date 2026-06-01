@@ -14,6 +14,8 @@ RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
 # Install pnpm
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable pnpm
 
 # First install dependencies (as they change less often)
