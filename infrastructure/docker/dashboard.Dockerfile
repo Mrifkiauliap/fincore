@@ -30,7 +30,7 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/turbo.json ./turbo.json
 
 # Skip Zod validation during Docker build since runtime secrets aren't available yet
-ENV SKIP_ENV_VALIDATION="1"
+ENV NEXT_PUBLIC_SKIP_ENV_VALIDATION="1"
 
 RUN pnpm turbo run build --filter=@fincore/dashboard...
 
