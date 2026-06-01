@@ -4,7 +4,12 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        "!.next/standalone/**"
+      ]
     },
     "dev": {
       "dependsOn": ["^build"],
@@ -19,7 +24,14 @@
       "cache": false
     },
     "clean": {
-      "cache": false
+      "cache": false,
+      "outputs": [
+        ".next/**",
+        "dist/**",
+        "node_modules/**",
+        "drizzle/**",
+        "**/*.tsbuildinfo"
+      ]
     },
     "db:generate": {
       "cache": false,

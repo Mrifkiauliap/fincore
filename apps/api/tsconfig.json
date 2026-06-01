@@ -11,6 +11,6 @@
     },
     "tsBuildInfoFile": "./tsconfig.tsbuildinfo"
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/modules/webhook/webhook.service.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
 }

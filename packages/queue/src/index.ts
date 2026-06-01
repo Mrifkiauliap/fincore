@@ -1,6 +1,6 @@
 import getConfig from "@fincore/config";
 import { createLogger } from "@fincore/logger";
-import { QueueName } from "@fincore/shared";
+import { JobName, QueueName } from "@fincore/shared";
 import { JobsOptions, Queue } from "bullmq";
 import { Redis } from "ioredis";
 
@@ -67,6 +67,31 @@ export async function enqueue<T>(
 // ─── All Queues (for BullBoard) ───────────────────────────────────────────────
 export function getAllQueues(): Queue[] {
   return Object.values(QueueName).map((name) => getQueue(name));
+}
+
+// ─── Message Helper ───────────────────────────────────────────────────────────
+export async function sendWaMessage(
+  chatId: string,
+  text: string,
+  replyTo?: string,
+): Promise<void> {
+  await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+    chatId,
+    text,
+    replyTo,
+  });
+}
+
+export async function sendWaImage(
+  chatId: string,
+  imageUrl: string,
+  caption?: string,
+): Promise<void> {
+  await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_IMAGE, {
+    chatId,
+    imageUrl,
+    caption,
+  });
 }
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { BaseProcessor } from "@/processors/base.processor";
 import { budgets, getDb, transactionCategories, users } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
@@ -43,7 +43,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
       .where(eq(users.phone, senderPhone))
       .limit(1);
     if (!user) {
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         "Pengguna tidak ditemukan. Ketik pesan sapaan terlebih dahulu untuk registrasi.",
       );
@@ -66,7 +66,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
         await this.handleDeleteBudget(chatId, user, parts.slice(2));
         break;
       default:
-        await this.sendReply(
+        await sendWaMessage(
           chatId,
           "❓ Perintah `/budget` tidak valid.\n\nContoh penggunaan:\n" +
             "• `/budget set makan 1000000` (Set batas budget)\n" +
@@ -80,7 +80,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
 
   private async handleSetBudget(chatId: string, user: any, args: string[]) {
     if (args.length < 2) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         "⚠️ Format salah. Contoh: `/budget set makan 1000000`",
       );
@@ -90,14 +90,14 @@ export class BudgetCommandProcessor extends BaseProcessor {
     const amountStr = args.pop()!;
     const nominal = parseInt(amountStr.replace(/\D/g, ""), 10);
     if (isNaN(nominal) || nominal <= 0) {
-      return this.sendReply(chatId, "⚠️ Nominal budget tidak valid.");
+      return sendWaMessage(chatId, "⚠️ Nominal budget tidak valid.");
     }
 
     const categoryInput = args.join(" ");
     const category = await this.resolveExpenseCategory(categoryInput, user.id);
 
     if (!category) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `⚠️ Kategori pengeluaran "${categoryInput}" tidak ditemukan.`,
       );
@@ -143,7 +143,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
       currency: "IDR",
       minimumFractionDigits: 0,
     });
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       `✅ Budget untuk kategori *${category.name}* berhasil diset ke ${formatter.format(nominal)} untuk bulan ini.`,
     );
@@ -166,7 +166,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
       );
 
     if (activeBudgets.length === 0) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `ℹ️ Kamu belum menetapkan budget sama sekali untuk bulan ${monthName} ${year}. Ketik \`/budget set [kategori] [nominal]\` untuk mulai.`,
       );
@@ -247,12 +247,12 @@ export class BudgetCommandProcessor extends BaseProcessor {
       reply += `*${name}*\nTerpakai: ${formatter.format(spent)} / ${formatter.format(limit)} (${percentage.toFixed(0)}%) ${statusIcon}\n\n`;
     }
 
-    await this.sendReply(chatId, reply.trim());
+    await sendWaMessage(chatId, reply.trim());
   }
 
   private async handleDeleteBudget(chatId: string, user: any, args: string[]) {
     if (args.length === 0) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         "⚠️ Kategori belum disebutkan. Contoh: `/budget hapus makan`",
       );
@@ -262,7 +262,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
     const category = await this.resolveExpenseCategory(categoryInput, user.id);
 
     if (!category) {
-      return this.sendReply(
+      return sendWaMessage(
         chatId,
         `⚠️ Kategori pengeluaran "${categoryInput}" tidak ditemukan.`,
       );
@@ -282,7 +282,7 @@ export class BudgetCommandProcessor extends BaseProcessor {
         ),
       );
 
-    await this.sendReply(
+    await sendWaMessage(
       chatId,
       `🗑️ Budget untuk kategori *${category.name}* bulan ini berhasil dihapus.`,
     );
@@ -332,12 +332,5 @@ export class BudgetCommandProcessor extends BaseProcessor {
       year: now.year(),
       monthName: now.toDate().toLocaleDateString("id-ID", { month: "long" }),
     };
-  }
-
-  private async sendReply(chatId: string, text: string) {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
   }
 }

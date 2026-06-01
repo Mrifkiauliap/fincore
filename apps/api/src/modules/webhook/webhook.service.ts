@@ -6,9 +6,9 @@ import {
 } from "@/modules/webhook/waha-payload.dto";
 import { FinanceGuardrail, MessageIntent } from "@fincore/ai";
 import getConfig from "@fincore/config";
-import { getDb, users } from "@fincore/db";
+import { getDb, sessions, users } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
-import { createValkeyConnection, enqueue } from "@fincore/queue";
+import { createValkeyConnection, enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { extractPhone } from "@fincore/utils";
 import { Inject, Injectable } from "@nestjs/common";
@@ -85,40 +85,7 @@ export class WebhookService {
       "Incoming message",
     );
 
-    // ── Cek Perintah System (Bypass Guardrail) ──
-    const p = this.triggerPrefix;
-    const lowerBody = cleanBody.toLowerCase();
-
-    // ── Cek Registrasi User ───────────────────────────────────────────────────
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.phone, senderPhone))
-      .limit(1);
-
-    const isRegisterCommand = lowerBody.startsWith(p + "daftar");
-
-    if (!user) {
-      if (isRegisterCommand) {
-        await enqueue(
-          QueueName.SETTINGS_COMMAND,
-          JobName.PROCESS_SETTINGS_COMMAND,
-          {
-            chatId: msg.from,
-            senderPhone,
-            commandText: cleanBody,
-          },
-        );
-      } else {
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: `👋 Halo! Kamu belum terdaftar di FinCore.\n\nSilakan daftar terlebih dahulu dengan mengetik:\n*${this.triggerPrefix}daftar [Nama Kamu]*\n\nContoh: *${this.triggerPrefix}daftar Budi*`,
-        });
-      }
-      return;
-    }
-
-    // ── Multi-turn: cek pending_action SEBELUM guardrail ─────────────────────────
+    // ── Multi-turn: cek pending_action SEBELUM pengecekan prefix ─────────────
     if (messageType === MessageType.TEXT && cleanBody.trim().length > 0) {
       const pendingRaw = await this.valkey.get(
         `fincore:pending_action:${msg.from}`,
@@ -137,231 +104,292 @@ export class WebhookService {
       }
     }
 
-    // ── Command Routing (Bypass AI) ───────────────────────────────────────────
-    if (messageType === MessageType.TEXT && lowerBody.startsWith(p)) {
-      // /budget
-      if (lowerBody.startsWith(p + "budget")) {
-        await enqueue(
-          QueueName.BUDGET_COMMAND,
-          JobName.PROCESS_BUDGET_COMMAND,
-          {
+    // ── Cek Prefix (Wajib untuk semua command/pesan baru) ─────────────────────
+    const p = this.triggerPrefix.toLowerCase();
+    const lowerBody = cleanBody.toLowerCase();
+
+    const isMedia =
+      messageType === MessageType.VOICE ||
+      messageType === MessageType.IMAGE ||
+      messageType === MessageType.DOCUMENT ||
+      messageType === MessageType.VIDEO;
+    let skipProcessing = false;
+
+    if (p && !lowerBody.startsWith(p)) {
+      if (isMedia) {
+        skipProcessing = true; // Simpan saja di DB agar bisa di-reply, jangan diproses AI
+      } else {
+        logger.debug(
+          { body: cleanBody, prefix: p },
+          "Message ignored because it does not start with the required prefix",
+        );
+        return;
+      }
+    }
+
+    if (!skipProcessing) {
+      // ── Cek Registrasi User ───────────────────────────────────────────────────
+      const [user] = await this.db
+        .select()
+        .from(users)
+        .where(eq(users.phone, senderPhone))
+        .limit(1);
+
+      const isRegisterCommand = lowerBody.startsWith(p + "daftar");
+
+      if (!user) {
+        if (isRegisterCommand) {
+          await enqueue(
+            QueueName.SETTINGS_COMMAND,
+            JobName.PROCESS_SETTINGS_COMMAND,
+            {
+              chatId: msg.from,
+              senderPhone,
+              commandText: cleanBody,
+            },
+          );
+        } else {
+          // Jika ada prefix tapi belum daftar, beri peringatan
+          await sendWaMessage(
+            msg.from,
+            `👋 Halo! Kamu belum terdaftar di FinCore.\n\nSilakan daftar terlebih dahulu dengan mengetik:\n*${this.triggerPrefix}daftar*`,
+            msg.id,
+          );
+        }
+        return;
+      }
+
+      // ── Command Routing (Bypass AI) ───────────────────────────────────────────
+      if (messageType === MessageType.TEXT && lowerBody.startsWith(p)) {
+        // /dashboard or /login
+        if (lowerBody === p + "dashboard" || lowerBody === p + "login") {
+          const crypto = await import("crypto");
+          const token = crypto.randomBytes(48).toString("base64url");
+          const expiresAt = new Date(Date.now() + 300000); // 5 menit
+
+          await this.db.insert(sessions).values({
+            id: crypto.randomUUID(), // Temp session ID
+            userId: user.id,
+            magicToken: token,
+            magicTokenExpiresAt: expiresAt,
+            expiresAt,
+          });
+
+          await sendWaMessage(
+            msg.from,
+            `🔑 *Akses Dashboard FinCore*\n\nKlik tautan sekali pakai di bawah ini untuk masuk ke Dashboard Anda (berlaku 5 menit):\n\n${getConfig("DASHBOARD_URL")}/api/auth/verify?token=${token}`,
+            msg.id,
+          );
+          return;
+        }
+        // /budget
+        if (lowerBody.startsWith(p + "budget")) {
+          await enqueue(
+            QueueName.BUDGET_COMMAND,
+            JobName.PROCESS_BUDGET_COMMAND,
+            {
+              chatId: msg.from,
+              senderPhone,
+              commandText: cleanBody,
+            },
+          );
+          return;
+        }
+
+        // /hapus, /hapus terakhir, /hapus [nama], /konfirmasi, /ubah
+        if (
+          lowerBody.startsWith(p + "hapus") ||
+          lowerBody.startsWith(p + "konfirmasi") ||
+          lowerBody.startsWith(p + "ubah")
+        ) {
+          await enqueue(
+            QueueName.TRANSACTION_COMMAND,
+            JobName.PROCESS_TRANSACTION_COMMAND,
+            { chatId: msg.from, senderPhone, commandText: cleanBody },
+          );
+          return;
+        }
+
+        // /tambah, /lihat, /cari
+        if (
+          lowerBody.startsWith(p + "tambah") ||
+          lowerBody.startsWith(p + "lihat") ||
+          lowerBody.startsWith(p + "cari")
+        ) {
+          await enqueue(
+            QueueName.CUSTOM_COMMAND,
+            JobName.PROCESS_CUSTOM_COMMAND,
+            { chatId: msg.from, senderPhone, commandText: cleanBody },
+          );
+          return;
+        }
+
+        // /atur, /settings
+        if (
+          lowerBody.startsWith(p + "atur") ||
+          lowerBody.startsWith(p + "settings")
+        ) {
+          await enqueue(
+            QueueName.SETTINGS_COMMAND,
+            JobName.PROCESS_SETTINGS_COMMAND,
+            { chatId: msg.from, senderPhone, commandText: cleanBody },
+          );
+          return;
+        }
+
+        // /laporan harian
+        if (
+          lowerBody === p + "laporan hari" ||
+          lowerBody === p + "laporan harian"
+        ) {
+          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
+            from: msg.from,
+            senderPhone,
+            query: "laporan hari ini",
+            type: "query",
+            rawMessageId: msg.id,
+          });
+          await sendWaMessage(
+            msg.from,
+            "Sedang merekap laporan harian...",
+            msg.id,
+          );
+          return;
+        }
+
+        // /laporan mingguan
+        if (
+          lowerBody === p + "laporan minggu" ||
+          lowerBody === p + "laporan mingguan"
+        ) {
+          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
+            from: msg.from,
+            senderPhone,
+            query: "laporan minggu ini",
+            type: "query",
+            rawMessageId: msg.id,
+          });
+          await sendWaMessage(
+            msg.from,
+            "Sedang merekap laporan mingguan...",
+            msg.id,
+          );
+          return;
+        }
+
+        // /laporan bulanan
+        if (
+          lowerBody === p + "laporan bulan" ||
+          lowerBody === p + "laporan bulanan"
+        ) {
+          await enqueue(
+            QueueName.MONTHLY_REPORT,
+            JobName.GENERATE_MONTHLY_REPORT,
+            { senderPhone },
+          );
+          await sendWaMessage(
+            msg.from,
+            "Sedang merekap laporan bulanan...",
+            msg.id,
+          );
+          return;
+        }
+
+        // /summary - ringkasan hari ini / minggu ini
+        if (lowerBody === p + "summary" || lowerBody === p + "ringkasan") {
+          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
+            from: msg.from,
+            senderPhone,
+            query: "ringkasan bulan ini",
+            type: "query",
+            rawMessageId: msg.id,
+          });
+          await sendWaMessage(msg.from, "Sedang merekap ringkasan...", msg.id);
+          return;
+        }
+
+        // /bantuan, /help
+        if (
+          lowerBody.startsWith(p + "bantuan") ||
+          lowerBody.startsWith(p + "help")
+        ) {
+          await sendWaMessage(msg.from, this.getGreetingReply(), msg.id);
+          return;
+        }
+
+        // /catat (Bypass to AI Guardrail intentionally)
+        if (lowerBody.startsWith(p + "catat")) {
+          // Biarkan jatuh (fall-through) ke AI Guardrail di bawah
+          logger.debug("Received /catat command, passing to AI Guardrail");
+        }
+        // Jika command menggunakan prefix tapi bukan command di atas, biarkan jatuh ke AI Guardrail.
+        // Guardrail akan mendeteksi apakah itu transaksi valid (misal "/beli bensin") atau tidak.
+      }
+
+      // ── Guardrail: check intent for text messages ─────────────────────────────
+      if (messageType === MessageType.TEXT && cleanBody.length > 0) {
+        const intentResult = await this.guardrail.detectIntent(cleanBody);
+
+        if (!this.guardrail.isAllowed(intentResult.intent)) {
+          await sendWaMessage(
+            msg.from,
+            this.guardrail.getOutOfScopeReply(),
+            msg.id,
+          );
+          logger.info(
+            { intent: intentResult.intent },
+            "Message rejected by guardrail",
+          );
+          return;
+        }
+
+        if (intentResult.intent === MessageIntent.GREETING) {
+          await sendWaMessage(msg.from, this.getGreetingReply(), msg.id);
+          return;
+        }
+
+        // QUERY_REPORT goes to report queue
+        if (intentResult.intent === MessageIntent.QUERY_REPORT) {
+          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
+            from: msg.from,
+            senderPhone,
+            query: intentResult.extractedQuery ?? cleanBody,
+            type: "query",
+            rawMessageId: null,
+          });
+
+          const queryAck =
+            intentResult.ackMessage ?? "Sedang mengecek data keuanganmu...";
+          await sendWaMessage(msg.from, queryAck, msg.id);
+          return;
+        }
+
+        // CONFIRMATION_REPLY - user menjawab ya/tidak untuk transaksi pending
+        if (intentResult.intent === MessageIntent.CONFIRMATION_REPLY) {
+          await enqueue(QueueName.CONFIRMATION, JobName.CONFIRM_TRANSACTION, {
             chatId: msg.from,
             senderPhone,
-            commandText: cleanBody,
-          },
-        );
-        return;
+            answer: intentResult.extractedQuery ?? cleanBody, // "yes" or "no"
+          });
+          return;
+        }
+
+        // SETUP_RECURRING - user ingin set reminder tagihan berulang
+        if (intentResult.intent === MessageIntent.SETUP_RECURRING) {
+          await enqueue(QueueName.RECURRING_SETUP, JobName.SETUP_RECURRING, {
+            chatId: msg.from,
+            senderPhone,
+            message: cleanBody,
+          });
+          await sendWaMessage(
+            msg.from,
+            "Sedang menyimpan pengingat tagihan...",
+            msg.id,
+          );
+          return;
+        }
       }
-
-      // /hapus, /hapus terakhir, /hapus [nama], /konfirmasi, /ubah
-      if (
-        lowerBody.startsWith(p + "hapus") ||
-        lowerBody.startsWith(p + "konfirmasi") ||
-        lowerBody.startsWith(p + "ubah")
-      ) {
-        await enqueue(
-          QueueName.TRANSACTION_COMMAND,
-          JobName.PROCESS_TRANSACTION_COMMAND,
-          { chatId: msg.from, senderPhone, commandText: cleanBody },
-        );
-        return;
-      }
-
-      // /tambah, /lihat, /cari
-      if (
-        lowerBody.startsWith(p + "tambah") ||
-        lowerBody.startsWith(p + "lihat") ||
-        lowerBody.startsWith(p + "cari")
-      ) {
-        await enqueue(
-          QueueName.CUSTOM_COMMAND,
-          JobName.PROCESS_CUSTOM_COMMAND,
-          { chatId: msg.from, senderPhone, commandText: cleanBody },
-        );
-        return;
-      }
-
-      // /atur, /settings
-      if (
-        lowerBody.startsWith(p + "atur") ||
-        lowerBody.startsWith(p + "settings")
-      ) {
-        await enqueue(
-          QueueName.SETTINGS_COMMAND,
-          JobName.PROCESS_SETTINGS_COMMAND,
-          { chatId: msg.from, senderPhone, commandText: cleanBody },
-        );
-        return;
-      }
-
-      // /laporan harian
-      if (
-        lowerBody === p + "laporan hari" ||
-        lowerBody === p + "laporan harian"
-      ) {
-        await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-          from: msg.from,
-          senderPhone,
-          query: "laporan hari ini",
-          type: "query",
-          rawMessageId: msg.id,
-        });
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: "Sedang merekap laporan harian...",
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // /laporan mingguan
-      if (
-        lowerBody === p + "laporan minggu" ||
-        lowerBody === p + "laporan mingguan"
-      ) {
-        await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-          from: msg.from,
-          senderPhone,
-          query: "laporan minggu ini",
-          type: "query",
-          rawMessageId: msg.id,
-        });
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: "Sedang merekap laporan mingguan...",
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // /laporan bulanan
-      if (
-        lowerBody === p + "laporan bulan" ||
-        lowerBody === p + "laporan bulanan"
-      ) {
-        await enqueue(
-          QueueName.MONTHLY_REPORT,
-          JobName.GENERATE_MONTHLY_REPORT,
-          { senderPhone },
-        );
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: "Sedang merekap laporan bulanan...",
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // /summary - ringkasan hari ini / minggu ini
-      if (lowerBody === p + "summary" || lowerBody === p + "ringkasan") {
-        await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-          from: msg.from,
-          senderPhone,
-          query: "ringkasan bulan ini",
-          type: "query",
-          rawMessageId: msg.id,
-        });
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: "Sedang merekap ringkasan...",
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // /bantuan, /help
-      if (
-        lowerBody.startsWith(p + "bantuan") ||
-        lowerBody.startsWith(p + "help")
-      ) {
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: this.getGreetingReply(),
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // Fallback unknown command
-      await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-        chatId: msg.from,
-        text: `Fitur command ini sedang dibangun! 🚧\n\nKetik ${p}bantuan untuk melihat perintah yang tersedia.`,
-        replyTo: msg.id,
-      });
-      return;
-    }
-
-    // ── Guardrail: check intent for text messages ─────────────────────────────
-    if (messageType === MessageType.TEXT && cleanBody.length > 0) {
-      const intentResult = await this.guardrail.detectIntent(cleanBody);
-
-      if (!this.guardrail.isAllowed(intentResult.intent)) {
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: this.guardrail.getOutOfScopeReply(),
-          replyTo: msg.id,
-        });
-        logger.info(
-          { intent: intentResult.intent },
-          "Message rejected by guardrail",
-        );
-        return;
-      }
-
-      if (intentResult.intent === MessageIntent.GREETING) {
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: this.getGreetingReply(),
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // QUERY_REPORT goes to report queue
-      if (intentResult.intent === MessageIntent.QUERY_REPORT) {
-        await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-          from: msg.from,
-          senderPhone,
-          query: intentResult.extractedQuery ?? cleanBody,
-          type: "query",
-          rawMessageId: null,
-        });
-
-        const queryAck =
-          intentResult.ackMessage ?? "Sedang mengecek data keuanganmu...";
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: queryAck,
-          replyTo: msg.id,
-        });
-        return;
-      }
-
-      // CONFIRMATION_REPLY - user menjawab ya/tidak untuk transaksi pending
-      if (intentResult.intent === MessageIntent.CONFIRMATION_REPLY) {
-        await enqueue(QueueName.CONFIRMATION, JobName.CONFIRM_TRANSACTION, {
-          chatId: msg.from,
-          senderPhone,
-          answer: intentResult.extractedQuery ?? cleanBody, // "yes" or "no"
-        });
-        return;
-      }
-
-      // SETUP_RECURRING - user ingin set reminder tagihan berulang
-      if (intentResult.intent === MessageIntent.SETUP_RECURRING) {
-        await enqueue(QueueName.RECURRING_SETUP, JobName.SETUP_RECURRING, {
-          chatId: msg.from,
-          senderPhone,
-          message: cleanBody,
-        });
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: msg.from,
-          text: "Sedang menyimpan pengingat tagihan...",
-          replyTo: msg.id,
-        });
-        return;
-      }
-    }
+    } // end of if (!skipProcessing)
 
     // ── Enqueue the raw message for storage + processing ─────────────────────
     await enqueue(
@@ -379,17 +407,19 @@ export class WebhookService {
         rawPayload: payload,
         timestamp: msg.timestamp,
         session: payload.session,
+        skipProcessing,
       },
     );
 
-    logger.info({ waMessageId: msg.id, type: messageType }, "Job enqueued");
+    logger.info(
+      { waMessageId: msg.id, type: messageType, skipProcessing },
+      "Job enqueued",
+    );
 
-    const ackMessage = this.getAckMessage(messageType as MessageType);
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId: msg.from,
-      text: ackMessage,
-      replyTo: msg.id,
-    });
+    if (!skipProcessing) {
+      const ackMessage = this.getAckMessage(messageType as MessageType);
+      await sendWaMessage(msg.from, ackMessage, msg.id);
+    }
   }
 
   // ─── Ack messages per type ────────────────────────────────────────────────
@@ -421,22 +451,22 @@ export class WebhookService {
       `*Catat Transaksi*\n` +
       `Langsung ketik, kirim voice note, atau foto struk.\n` +
       `Contoh: _"Makan siang 25rb gopay"_\n\n` +
-      `*Transaksi*\n` +
-      `\`${p}hapus\` - hapus transaksi terakhir\n` +
-      `\`${p}hapus [nama]\` - cari & hapus\n` +
-      `\`${p}konfirmasi\` - konfirmasi pending\n\n` +
+      `*Dashboard & Laporan*\n` +
+      `\`${p}dashboard\` atau \`${p}login\` - Akses Web Dashboard\n` +
+      `\`${p}summary\` - Ringkasan singkat\n` +
+      `\`${p}laporan harian\` / \`${p}laporan bulanan\` - Laporan detail\n` +
+      `Atau tanya AI: _"Berapa pengeluaranku minggu ini?"_\n\n` +
+      `*Kelola Transaksi*\n` +
+      `\`${p}ubah [nama]\` - Ubah data transaksi\n` +
+      `\`${p}hapus\` - Hapus transaksi terakhir\n` +
+      `\`${p}konfirmasi\` - Konfirmasi transaksi pending\n` +
+      `\`${p}cari [kata kunci]\` - Cari transaksi\n\n` +
       `*Budget*\n` +
       `\`${p}budget set [kategori] [nominal]\`\n` +
-      `\`${p}budget cek\`\n` +
-      `\`${p}budget hapus [kategori]\`\n\n` +
-      `*Laporan*\n` +
-      `\`${p}summary\` - ringkasan singkat\n` +
-      `\`${p}laporan bulanan\` - laporan lengkap bulan lalu\n` +
-      `Atau tanya bebas: _"Berapa pengeluaranku minggu ini?"_\n\n` +
-      `*Pengaturan*\n` +
-      `\`${p}atur timezone Asia/Jakarta\`\n` +
+      `\`${p}budget cek\` / \`${p}budget hapus [kat]\`\n\n` +
+      `*Data Master & Pengaturan*\n` +
       `\`${p}tambah metode [nama]\`\n` +
-      `\`${p}tambah kategori [nama] expense\`\n` +
+      `\`${p}tambah kategori [nama] expense/income/transfer\`\n` +
       `\`${p}lihat metode\` / \`${p}lihat kategori\``
     );
   }

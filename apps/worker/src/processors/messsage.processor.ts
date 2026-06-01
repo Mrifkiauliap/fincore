@@ -1,7 +1,7 @@
 import { BaseProcessor } from "@/processors/base.processor";
 import getConfig from "@fincore/config";
 import { getDb, rawMessages, users } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job } from "bullmq";
@@ -19,6 +19,7 @@ interface IncomingMessageJobData {
   rawPayload: unknown;
   timestamp: number;
   session: string;
+  skipProcessing?: boolean;
 }
 
 /**
@@ -78,10 +79,7 @@ export class IncomingMessageProcessor extends BaseProcessor {
           `Ketik ${prefix}bantuan untuk panduan lengkap.\n\n` +
           `Yuk mulai catat keuanganmu! 💪`;
 
-        await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-          chatId: data.from,
-          text: welcomeMessage,
-        });
+        await sendWaMessage(data.from, welcomeMessage);
 
         await db
           .update(users)
@@ -101,7 +99,7 @@ export class IncomingMessageProcessor extends BaseProcessor {
           mediaMimetype: data.mediaMimetype,
           mediaSize: data.mediaSize ?? undefined,
           rawPayload: data.rawPayload as Record<string, unknown>,
-          processingStatus: "processing",
+          processingStatus: data.skipProcessing ? "skipped" : "processing",
           receivedAt: new Date(data.timestamp * 1000),
         })
         .onConflictDoNothing()
@@ -125,6 +123,14 @@ export class IncomingMessageProcessor extends BaseProcessor {
         },
         "Raw message saved",
       );
+
+      if (data.skipProcessing) {
+        this.logger.info(
+          { waMessageId: data.waMessageId },
+          "Skipping processing as requested (e.g. media without prefix)",
+        );
+        return;
+      }
 
       switch (data.type) {
         case MessageType.VOICE:
@@ -160,17 +166,77 @@ export class IncomingMessageProcessor extends BaseProcessor {
 
         case MessageType.TEXT:
           if (data.body && data.body.trim().length > 0) {
-            await enqueue(
-              QueueName.AI_EXTRACTION,
-              JobName.EXTRACT_TRANSACTION,
-              {
+            let targetType = MessageType.TEXT;
+            let mediaUrl: string | null = null;
+            let mediaMimetype: string | null = null;
+
+            // Cek apakah ini reply ke pesan sebelumnya
+            const payloadObj = data.rawPayload as any;
+            const replyToId = payloadObj?.payload?.replyTo;
+
+            if (replyToId) {
+              const [quotedMsg] = await db
+                .select()
+                .from(rawMessages)
+                .where(eq(rawMessages.waMessageId, replyToId))
+                .limit(1);
+
+              if (
+                quotedMsg &&
+                (quotedMsg.type === MessageType.VOICE ||
+                  quotedMsg.type === MessageType.IMAGE ||
+                  quotedMsg.type === MessageType.DOCUMENT ||
+                  quotedMsg.type === MessageType.VIDEO)
+              ) {
+                targetType = quotedMsg.type as MessageType;
+                mediaUrl = quotedMsg.mediaUrl;
+                mediaMimetype = quotedMsg.mediaMimetype;
+                this.logger.info(
+                  { replyToId, targetType },
+                  "Extracted quoted media from reply",
+                );
+              }
+            }
+
+            if (targetType === MessageType.VOICE && mediaUrl) {
+              await enqueue(
+                QueueName.VOICE_TRANSCRIPTION,
+                JobName.TRANSCRIBE_VOICE,
+                {
+                  rawMessageId: rawMessage.id, // Gunakan ID pesan text baru
+                  userId: user.id,
+                  from: data.from,
+                  mediaUrl: mediaUrl,
+                  mediaMimetype: mediaMimetype ?? "audio/ogg; codecs=opus",
+                  caption: data.body, // Ini adalah prefix/command yang diketik user
+                },
+              );
+            } else if (
+              (targetType === MessageType.IMAGE ||
+                targetType === MessageType.DOCUMENT) &&
+              mediaUrl
+            ) {
+              await enqueue(QueueName.IMAGE_OCR, JobName.OCR_IMAGE, {
                 rawMessageId: rawMessage.id,
                 userId: user.id,
                 from: data.from,
-                sourceType: MessageType.TEXT,
-                content: data.body,
-              },
-            );
+                mediaUrl: mediaUrl,
+                mediaMimetype: mediaMimetype ?? "image/jpeg",
+                caption: data.body,
+              });
+            } else {
+              await enqueue(
+                QueueName.AI_EXTRACTION,
+                JobName.EXTRACT_TRANSACTION,
+                {
+                  rawMessageId: rawMessage.id,
+                  userId: user.id,
+                  from: data.from,
+                  sourceType: MessageType.TEXT,
+                  content: data.body,
+                },
+              );
+            }
           }
           break;
 

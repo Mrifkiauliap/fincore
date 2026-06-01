@@ -1,6 +1,6 @@
 import { BaseProcessor } from "@/processors/base.processor";
 import { getDb, paymentMethods, rawMessages, transactions } from "@fincore/db";
-import { createValkeyConnection, enqueue } from "@fincore/queue";
+import { createValkeyConnection, enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job } from "bullmq";
@@ -33,7 +33,7 @@ export class ConfirmationProcessor extends BaseProcessor {
     const raw = await this.valkey.get(pendingConfirmKey(chatId));
     if (!raw) {
       // Tidak ada transaksi pending - mungkin sudah expired atau belum pernah ada
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         "Tidak ada transaksi yang menunggu konfirmasi.",
       );
@@ -113,7 +113,7 @@ export class ConfirmationProcessor extends BaseProcessor {
         "Transactions confirmed by user",
       );
 
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         transactionIds.length > 1
           ? `${transactionIds.length} transaksi berhasil disimpan.`
@@ -139,7 +139,7 @@ export class ConfirmationProcessor extends BaseProcessor {
         "Transactions cancelled by user",
       );
 
-      await this.sendReply(chatId, "Oke, transaksi dibatalkan.");
+      await sendWaMessage(chatId, "Oke, transaksi dibatalkan.");
     } else {
       // ── 2c. Coba resolve sebagai metode pembayaran ─────────────────────────────
       // Ambil userId dari salah satu transaksi
@@ -218,14 +218,14 @@ export class ConfirmationProcessor extends BaseProcessor {
             "Transactions confirmed with new payment method",
           );
 
-          await this.sendReply(chatId, `Tercatat menggunakan ${match.name}.`);
+          await sendWaMessage(chatId, `Tercatat menggunakan ${match.name}.`);
           await this.valkey.del(pendingConfirmKey(chatId));
           return;
         }
       }
 
       // Jika tidak match apa-apa
-      await this.sendReply(
+      await sendWaMessage(
         chatId,
         "Jawaban tidak dikenali.\nBalas *ya* untuk konfirmasi, *tidak* untuk batalkan, atau balas dengan *nama metode pembayaran* jika metode sebelumnya kosong.",
       );
@@ -234,12 +234,5 @@ export class ConfirmationProcessor extends BaseProcessor {
 
     // ── 3. Hapus session dari Valkey ───────────────────────────────────────────
     await this.valkey.del(pendingConfirmKey(chatId));
-  }
-
-  private async sendReply(chatId: string, text: string): Promise<void> {
-    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-      chatId,
-      text,
-    });
   }
 }

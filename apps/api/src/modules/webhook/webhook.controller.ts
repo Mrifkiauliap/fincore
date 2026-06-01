@@ -29,7 +29,7 @@ export class WebhookController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(WebhookSignatureGuard)
   receive(@Body() payload: WahaWebhookPayload): { ok: boolean } {
-    this.webhookService.handleIncoming(payload).catch((err) => {
+    this.webhookService.handleIncoming(payload).catch((err: unknown) => {
       this.logger.error(
         { err, event: payload.event },
         "Webhook processing error",

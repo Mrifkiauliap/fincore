@@ -6,7 +6,7 @@ import {
   transactions,
   users,
 } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
@@ -132,10 +132,7 @@ export class BudgetCheckProcessor extends BaseProcessor {
       // Kirim ALERT
       const msg = `🚨 *BUDGET TERLAMPAUI!*\n\nPengeluaran kategori *${categoryName}* bulan ini sudah melampaui batas.\n\nBatas: ${formatter.format(budgetLimit)}\nTerpakai: ${formatter.format(totalSpent)} (${percentage.toFixed(0)}%)\n\nHarap berhemat! 🛑`;
 
-      await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-        chatId: user.phone,
-        text: msg,
-      });
+      await sendWaMessage(user.phone, msg);
 
       await this.db
         .update(budgets)
@@ -150,10 +147,7 @@ export class BudgetCheckProcessor extends BaseProcessor {
       const sisa = budgetLimit - totalSpent;
       const msg = `⚠️ *Peringatan Budget!*\n\nPengeluaran kategori *${categoryName}* sudah mencapai ${percentage.toFixed(0)}% dari budget bulan ini.\n\nBatas: ${formatter.format(budgetLimit)}\nTerpakai: ${formatter.format(totalSpent)}\nSisa: ${formatter.format(sisa)}`;
 
-      await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-        chatId: user.phone,
-        text: msg,
-      });
+      await sendWaMessage(user.phone, msg);
 
       await this.db
         .update(budgets)

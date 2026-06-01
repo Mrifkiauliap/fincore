@@ -46,6 +46,23 @@ CREATE TABLE "ai_processing_logs" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "budgets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"category_id" uuid NOT NULL,
+	"amount" numeric(15, 2) NOT NULL,
+	"currency" text DEFAULT 'IDR' NOT NULL,
+	"month" integer NOT NULL,
+	"year" integer NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"notes" text,
+	"last_warning_sent_at" timestamp,
+	"last_alert_sent_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "uq_budgets_user_cat_month_year" UNIQUE("user_id","category_id","month","year")
+);
+--> statement-breakpoint
 CREATE TABLE "payment_methods" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
@@ -126,21 +143,14 @@ CREATE TABLE "reports" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "budgets" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+CREATE TABLE "user_sessions" (
+	"id" text PRIMARY KEY NOT NULL,
 	"user_id" uuid NOT NULL,
-	"category_id" uuid NOT NULL,
-	"amount" numeric(15, 2) NOT NULL,
-	"currency" text DEFAULT 'IDR' NOT NULL,
-	"month" integer NOT NULL,
-	"year" integer NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"notes" text,
-	"last_warning_sent_at" timestamp,
-	"last_alert_sent_at" timestamp,
+	"magic_token" text,
+	"magic_token_expires_at" timestamp,
+	"expires_at" timestamp NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "uq_budgets_user_cat_month_year" UNIQUE("user_id","category_id","month","year")
+	CONSTRAINT "user_sessions_magic_token_unique" UNIQUE("magic_token")
 );
 --> statement-breakpoint
 CREATE TABLE "transaction_categories" (
@@ -246,6 +256,8 @@ CREATE TABLE "webhook_subscriptions" (
 );
 --> statement-breakpoint
 ALTER TABLE "ai_processing_logs" ADD CONSTRAINT "ai_processing_logs_raw_message_id_raw_messages_id_fk" FOREIGN KEY ("raw_message_id") REFERENCES "public"."raw_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "budgets" ADD CONSTRAINT "budgets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "budgets" ADD CONSTRAINT "budgets_category_id_transaction_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."transaction_categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment_methods" ADD CONSTRAINT "payment_methods_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "raw_ai_outputs" ADD CONSTRAINT "raw_ai_outputs_raw_message_id_raw_messages_id_fk" FOREIGN KEY ("raw_message_id") REFERENCES "public"."raw_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "raw_messages" ADD CONSTRAINT "raw_messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -253,8 +265,7 @@ ALTER TABLE "recurring_bills" ADD CONSTRAINT "recurring_bills_user_id_users_id_f
 ALTER TABLE "recurring_bills" ADD CONSTRAINT "recurring_bills_payment_method_id_payment_methods_id_fk" FOREIGN KEY ("payment_method_id") REFERENCES "public"."payment_methods"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recurring_bills" ADD CONSTRAINT "recurring_bills_category_id_transaction_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."transaction_categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "reports" ADD CONSTRAINT "reports_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "budgets" ADD CONSTRAINT "budgets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "budgets" ADD CONSTRAINT "budgets_category_id_transaction_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."transaction_categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "transaction_categories" ADD CONSTRAINT "transaction_categories_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "transaction_tag_mappings" ADD CONSTRAINT "transaction_tag_mappings_transaction_id_transactions_id_fk" FOREIGN KEY ("transaction_id") REFERENCES "public"."transactions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "transaction_tag_mappings" ADD CONSTRAINT "transaction_tag_mappings_tag_id_transaction_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."transaction_tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -268,6 +279,7 @@ ALTER TABLE "webhook_delivery_logs" ADD CONSTRAINT "webhook_delivery_logs_subscr
 CREATE INDEX "idx_ai_processing_logs_raw_message_id" ON "ai_processing_logs" USING btree ("raw_message_id");--> statement-breakpoint
 CREATE INDEX "idx_ai_processing_logs_step" ON "ai_processing_logs" USING btree ("step");--> statement-breakpoint
 CREATE INDEX "idx_ai_processing_logs_status" ON "ai_processing_logs" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "idx_budgets_user_month_year" ON "budgets" USING btree ("user_id","month","year");--> statement-breakpoint
 CREATE INDEX "idx_payment_methods_user_id" ON "payment_methods" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_payment_methods_type" ON "payment_methods" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "idx_raw_ai_outputs_raw_message_id" ON "raw_ai_outputs" USING btree ("raw_message_id");--> statement-breakpoint
@@ -280,7 +292,8 @@ CREATE INDEX "idx_recurring_bills_user_id" ON "recurring_bills" USING btree ("us
 CREATE INDEX "idx_recurring_bills_next_reminder" ON "recurring_bills" USING btree ("next_reminder_at");--> statement-breakpoint
 CREATE INDEX "idx_recurring_bills_is_active" ON "recurring_bills" USING btree ("is_active");--> statement-breakpoint
 CREATE INDEX "idx_reports_user_id_type_period" ON "reports" USING btree ("user_id","type","period_start");--> statement-breakpoint
-CREATE INDEX "idx_budgets_user_month_year" ON "budgets" USING btree ("user_id","month","year");--> statement-breakpoint
+CREATE INDEX "idx_sessions_user_id" ON "user_sessions" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "idx_sessions_magic_token" ON "user_sessions" USING btree ("magic_token");--> statement-breakpoint
 CREATE INDEX "idx_transaction_categories_type" ON "transaction_categories" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "idx_transaction_categories_user_id" ON "transaction_categories" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_transaction_categories_is_default" ON "transaction_categories" USING btree ("is_default");--> statement-breakpoint
