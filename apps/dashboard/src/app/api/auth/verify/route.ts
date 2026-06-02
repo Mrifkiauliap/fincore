@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Hapus magic token agar tidak bisa dipakai lagi (One-Time Use)
+  // Jangan hapus magicToken secara instan (One-Time Use) karena sistem preview link WhatsApp (Bot)
+  // seringkali melakukan GET request ke URL ini sebelum user sempat mengkliknya.
+  // Token akan otomatis tidak valid setelah 5 menit sesuai magicTokenExpiresAt.
   await db
     .update(sessions)
     .set({
-      magicToken: null,
-      magicTokenExpiresAt: null,
       // Perpanjang sesi 7 hari
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     })
