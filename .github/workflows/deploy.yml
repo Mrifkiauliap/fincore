@@ -25,7 +25,7 @@ jobs:
             git pull origin prod
             echo "==> Rebuilding and restarting containers..."
             docker compose build api worker sender dashboard
-            docker compose up -d --force-recreate api worker sender dashboard cloudflared bull-board
+            docker compose up -d --force-recreate api worker sender dashboard cloudflared
             echo "==> Running database migrations..."
             docker compose exec -T api pnpm --filter @fincore/db run db:push || true
             echo "==> Cleaning up unused Docker resources..."
