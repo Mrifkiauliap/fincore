@@ -13,7 +13,7 @@ const logger = createLogger("ai:groq-whisper");
  * kata/frasa yang muncul di prompt lebih mungkin dikenali dengan benar.
  */
 const FINANCIAL_TRANSCRIPTION_PROMPT = [
-  // Slang nominal Indonesia (sangat penting — salah transkripsi = salah amount)
+  // Slang nominal Indonesia (sangat penting -salah transkripsi = salah amount)
   "ceban 10000",
   "gocap 50",
   "gopek 500",
@@ -132,7 +132,7 @@ export class GroqWhisperProvider implements ITranscriptionProvider {
     );
 
     // Groq's Whisper API accepts a `prompt` field that acts as a vocabulary
-    // prior — financial terms and Indonesian slang listed in the prompt are
+    // prior -financial terms and Indonesian slang listed in the prompt are
     // significantly more likely to be transcribed correctly.
     const transcription = await this.client.audio.transcriptions.create({
       file: new File([audioBuffer], "audio.ogg", { type: mimetype }),

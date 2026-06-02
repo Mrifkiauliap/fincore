@@ -12,7 +12,7 @@ import { ExtractionContext, IAiProvider } from "../interfaces";
 const logger = createLogger("ai:sumopod");
 
 /**
- * Deskripsi semantik per slug kategori — digunakan untuk memberikan
+ * Deskripsi semantik per slug kategori -digunakan untuk memberikan
  * panduan klasifikasi ke AI agar tidak default ke "other_expense"/"other_income".
  */
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {

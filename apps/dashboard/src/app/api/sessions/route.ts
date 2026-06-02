@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getDb, sessions } from "@fincore/db";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -52,7 +52,7 @@ export async function GET() {
  * DELETE /api/sessions
  *
  * Sign out a specific session (body: { id: string }).
- * Cannot sign out the current session via this endpoint — use /api/auth/logout instead.
+ * Cannot sign out the current session via this endpoint -use /api/auth/logout instead.
  */
 export async function DELETE(request: NextRequest) {
   try {
