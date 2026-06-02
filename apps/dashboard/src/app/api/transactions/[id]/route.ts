@@ -34,6 +34,11 @@ export async function GET(
         category: true,
         paymentMethod: true,
         toPaymentMethod: true,
+        tags: {
+          with: {
+            tag: true,
+          },
+        },
       },
     });
 

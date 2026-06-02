@@ -20,14 +20,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-const rangeOptions = [
-  { key: "7d", label: "7 Hari" },
-  { key: "30d", label: "1 Bulan" },
-  { key: "90d", label: "3 Bulan" },
-  { key: "180d", label: "6 Bulan" },
-  { key: "365d", label: "1 Tahun" },
-];
-
 type InsightsData = {
   dailySpending: { day: string; total: number; count: number }[];
   categoryAnalytics: {
@@ -43,6 +35,17 @@ type InsightsData = {
     totalExpense: number;
     totalFee: number;
     netBalance: number;
+  };
+  burnRate: {
+    monthlyAverage: number;
+    emergencyFund3Month: number;
+    emergencyFund6Month: number;
+  };
+  billToIncome: {
+    totalMonthlyBills: number;
+    billCount: number;
+    avgMonthlyIncome: number;
+    ratio: number;
   };
   weeklyTrend: { week: string; expense: number; income: number }[];
   largestTransactions: any[];
@@ -65,6 +68,18 @@ const dayLabels: Record<string, string> = {
   "Saturday ": "Sabtu",
   "Sunday   ": "Minggu",
 };
+
+const displayDay = (dow: string) => {
+  return dayLabels[dow] || dow.trim();
+};
+
+const rangeOptions = [
+  { key: "7d", label: "7 Hari" },
+  { key: "30d", label: "1 Bulan" },
+  { key: "90d", label: "3 Bulan" },
+  { key: "180d", label: "6 Bulan" },
+  { key: "365d", label: "1 Tahun" },
+];
 
 export default function InsightsPage() {
   const [data, setData] = useState<InsightsData | null>(null);
@@ -281,6 +296,69 @@ export default function InsightsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   perhatikan metode bayar
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Financial Health Indicators */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="border bg-gradient-to-br from-orange-500/5 to-transparent">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  🔥 Monthly Burn Rate
+                </CardTitle>
+                <div className="rounded-full p-1.5 bg-orange-500/10">
+                  <Zap className="h-4 w-4 text-orange-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-500">
+                  {formatCurrency(data.burnRate.monthlyAverage, "IDR")}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Target dana darurat:{" "}
+                  {formatCurrency(data.burnRate.emergencyFund3Month, "IDR")} –{" "}
+                  {formatCurrency(data.burnRate.emergencyFund6Month, "IDR")}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card
+              className={`border bg-gradient-to-br ${
+                data.billToIncome.ratio > 50
+                  ? "from-red-500/5 to-transparent"
+                  : data.billToIncome.ratio > 30
+                    ? "from-amber-500/5 to-transparent"
+                    : "from-emerald-500/5 to-transparent"
+              }`}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Tagihan / Pemasukan
+                </CardTitle>
+                <div className="rounded-full p-1.5 bg-blue-500/10">
+                  <Target className="h-4 w-4 text-blue-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={`text-2xl font-bold ${
+                    data.billToIncome.ratio > 50
+                      ? "text-red-500"
+                      : data.billToIncome.ratio > 30
+                        ? "text-amber-500"
+                        : "text-emerald-500"
+                  }`}
+                >
+                  {data.billToIncome.ratio.toFixed(0)}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {data.billToIncome.billCount} tagihan ·{" "}
+                  {formatCurrency(data.billToIncome.totalMonthlyBills, "IDR")}
+                  /bln vs{" "}
+                  {formatCurrency(data.billToIncome.avgMonthlyIncome, "IDR")}
+                  /bln pemasukan
                 </p>
               </CardContent>
             </Card>

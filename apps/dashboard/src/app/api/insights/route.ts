@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { getDb, transactions } from "@fincore/db";
+import { getDb, recurringBills, transactions } from "@fincore/db";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -42,6 +42,16 @@ export async function GET(request: NextRequest) {
       gte(transactions.transactionDate, rangeStart),
     ];
 
+    // === Income/Expense/Fee summary ===
+    const [ratio] = await db
+      .select({
+        totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalFee: sql<number>`COALESCE(SUM(${transactions.fee}), 0)`,
+      })
+      .from(transactions)
+      .where(and(...rangeConditions));
+
     // === Spending Velocity (daily average spending per week) ===
     const dailySpending = await db
       .select({
@@ -74,16 +84,6 @@ export async function GET(request: NextRequest) {
       .groupBy(sql`tc.name`, sql`tc.icon`)
       .orderBy(sql`COALESCE(SUM(${transactions.amount}), 0) DESC`)
       .limit(10);
-
-    // === Income vs Expense ratio (pie chart data) ===
-    const [incomeExpenseRatio] = await db
-      .select({
-        totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
-        totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-        totalFee: sql<number>`COALESCE(SUM(${transactions.fee}), 0)`,
-      })
-      .from(transactions)
-      .where(and(...rangeConditions));
 
     // === Weekly trend (last 4 weeks) ===
     const fourWeeksAgo = dayjs()
@@ -137,15 +137,65 @@ export async function GET(request: NextRequest) {
       )
       .orderBy(sql`EXTRACT(DOW FROM ${transactions.transactionDate})`);
 
+    // === Burn Rate: avg monthly expense (last 3 months) ===
+    const threeMonthsAgo = dayjs()
+      .tz(tz)
+      .subtract(3, "month")
+      .startOf("month")
+      .toDate();
+
+    const monthlyExpenses = await db
+      .select({
+        month: sql<string>`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          ...baseConditions,
+          eq(transactions.type, "expense"),
+          gte(transactions.transactionDate, threeMonthsAgo),
+        ),
+      )
+      .groupBy(sql`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`);
+
+    const burnRate =
+      monthlyExpenses.length > 0
+        ? monthlyExpenses.reduce((s, m) => s + Number(m.total), 0) /
+          monthlyExpenses.length
+        : 0;
+
+    // === Bill-to-Income Ratio: total active bills / avg monthly income ===
+    const activeBills = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(${recurringBills.amount}), 0)`,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(recurringBills)
+      .where(
+        and(
+          eq(recurringBills.userId, user.id),
+          eq(recurringBills.isActive, true),
+        ),
+      );
+
+    const totalMonthlyBills = Number(activeBills[0]?.total ?? 0);
+    const billCount = Number(activeBills[0]?.count ?? 0);
+
+    const avgMonthlyIncome =
+      days > 0 && ratio ? (ratio.totalIncome / days) * 30 : 0;
+
+    const billToIncomeRatio =
+      avgMonthlyIncome > 0 ? (totalMonthlyBills / avgMonthlyIncome) * 100 : 0;
+
     // === AI-generated insights ===
     const insights: string[] = [];
+    const totalFee = ratio?.totalFee ?? 0;
 
-    const ratio = incomeExpenseRatio;
     if (ratio) {
+      const netBalance = ratio.totalIncome - ratio.totalExpense - totalFee;
       const savingsRate =
-        ratio.totalIncome > 0
-          ? ((ratio.totalIncome - ratio.totalExpense) / ratio.totalIncome) * 100
-          : 0;
+        ratio.totalIncome > 0 ? (netBalance / ratio.totalIncome) * 100 : 0;
       if (savingsRate > 50) {
         insights.push(
           `💪 Tabungan kamu sangat sehat! ${savingsRate.toFixed(0)}% dari pemasukan berhasil disimpan dalam ${days} hari terakhir.`,
@@ -160,9 +210,27 @@ export async function GET(request: NextRequest) {
         );
       } else if (ratio.totalExpense > 0) {
         insights.push(
-          `🔴 Pengeluaran melebihi pemasukan sebesar ${formatCurrency(Math.abs(ratio.totalIncome - ratio.totalExpense - ratio.totalFee))} dalam ${days} hari terakhir. Segera kurangi pengeluaran!`,
+          `🔴 Pengeluaran melebihi pemasukan sebesar ${formatCurrency(Math.abs(netBalance))} dalam ${days} hari terakhir. Segera kurangi pengeluaran!`,
         );
       }
+    }
+
+    // Burn rate insight
+    if (burnRate > 0) {
+      const emergency3 = burnRate * 3;
+      const emergency6 = burnRate * 6;
+      insights.push(
+        `🔥 Rata-rata pengeluaran bulanan: ${formatCurrency(burnRate)}. Target dana darurat: ${formatCurrency(emergency3)} – ${formatCurrency(emergency6)} (3–6 bulan pengeluaran).`,
+      );
+    }
+
+    // Bill-to-income insight
+    if (billCount > 0 && avgMonthlyIncome > 0) {
+      const emoji =
+        billToIncomeRatio > 50 ? "🔴" : billToIncomeRatio > 30 ? "⚠️" : "✅";
+      insights.push(
+        `${emoji} ${billCount} tagihan aktif menghabiskan ${billToIncomeRatio.toFixed(0)}% dari estimasi pemasukan bulanan (${formatCurrency(totalMonthlyBills)}/bln). ${billToIncomeRatio > 50 ? "Ini terlalu tinggi, kurangi pengeluaran tetap!" : billToIncomeRatio > 30 ? "Masih wajar, tapi tetap waspada." : "Rasio tagihan sangat sehat!"}`,
+      );
     }
 
     // Top category insight
@@ -186,9 +254,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fee insight
-    if (ratio && ratio.totalFee > 0) {
+    if (totalFee > 0) {
       insights.push(
-        `💸 Total biaya admin: ${formatCurrency(ratio.totalFee)}. Pertimbangkan metode pembayaran dengan fee lebih rendah.`,
+        `💸 Total biaya admin: ${formatCurrency(totalFee)}. Pertimbangkan metode pembayaran dengan fee lebih rendah.`,
       );
     }
 
@@ -206,14 +274,24 @@ export async function GET(request: NextRequest) {
         ...c,
         percentage: allRangeExpense > 0 ? (c.total / allRangeExpense) * 100 : 0,
       })),
-      incomeExpenseRatio: ratio
-        ? {
-            totalIncome: ratio.totalIncome,
-            totalExpense: ratio.totalExpense,
-            totalFee: ratio.totalFee,
-            netBalance: ratio.totalIncome - ratio.totalExpense - ratio.totalFee,
-          }
-        : { totalIncome: 0, totalExpense: 0, totalFee: 0, netBalance: 0 },
+      incomeExpenseRatio: {
+        totalIncome: ratio?.totalIncome ?? 0,
+        totalExpense: ratio?.totalExpense ?? 0,
+        totalFee,
+        netBalance:
+          (ratio?.totalIncome ?? 0) - (ratio?.totalExpense ?? 0) - totalFee,
+      },
+      burnRate: {
+        monthlyAverage: burnRate,
+        emergencyFund3Month: burnRate * 3,
+        emergencyFund6Month: burnRate * 6,
+      },
+      billToIncome: {
+        totalMonthlyBills,
+        billCount,
+        avgMonthlyIncome,
+        ratio: billToIncomeRatio,
+      },
       weeklyTrend,
       largestTransactions,
       dayOfWeekSpending,

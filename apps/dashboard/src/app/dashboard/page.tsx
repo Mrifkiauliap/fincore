@@ -60,6 +60,7 @@ async function getDashboardData(userId: string, rangeDays: number) {
       .select({
         totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
         totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalFee: sql<number>`COALESCE(SUM(${transactions.fee}), 0)`,
         count: sql<number>`COUNT(*)::int`,
       })
       .from(transactions)
@@ -76,6 +77,7 @@ async function getDashboardData(userId: string, rangeDays: number) {
       .select({
         totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
         totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalFee: sql<number>`COALESCE(SUM(${transactions.fee}), 0)`,
         count: sql<number>`COUNT(*)::int`,
       })
       .from(transactions)
@@ -91,6 +93,7 @@ async function getDashboardData(userId: string, rangeDays: number) {
       .select({
         totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
         totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalFee: sql<number>`COALESCE(SUM(${transactions.fee}), 0)`,
         count: sql<number>`COUNT(*)::int`,
       })
       .from(transactions)
@@ -168,28 +171,37 @@ async function getDashboardData(userId: string, rangeDays: number) {
   // Savings rate
   const rangeIncome = Number(rangeSummary?.totalIncome ?? 0);
   const rangeExpense = Number(rangeSummary?.totalExpense ?? 0);
-  const savingsRate =
-    rangeIncome > 0 ? ((rangeIncome - rangeExpense) / rangeIncome) * 100 : 0;
+  const rangeFee = Number(rangeSummary?.totalFee ?? 0);
+  const rangeBalance = rangeIncome - rangeExpense - rangeFee;
+  const savingsRate = rangeIncome > 0 ? (rangeBalance / rangeIncome) * 100 : 0;
 
   return {
     rangeSummary: {
       totalExpense: rangeExpense,
       totalIncome: rangeIncome,
-      balance: rangeIncome - rangeExpense,
+      totalFee: rangeFee,
+      balance: rangeBalance,
       count: rangeSummary?.count ?? 0,
       savingsRate,
     },
     mtd: {
       totalExpense: Number(mtd?.totalExpense ?? 0),
       totalIncome: Number(mtd?.totalIncome ?? 0),
-      balance: Number(mtd?.totalIncome ?? 0) - Number(mtd?.totalExpense ?? 0),
+      totalFee: Number(mtd?.totalFee ?? 0),
+      balance:
+        Number(mtd?.totalIncome ?? 0) -
+        Number(mtd?.totalExpense ?? 0) -
+        Number(mtd?.totalFee ?? 0),
       count: mtd?.count ?? 0,
     },
     allTime: {
       totalExpense: Number(allTime?.totalExpense ?? 0),
       totalIncome: Number(allTime?.totalIncome ?? 0),
+      totalFee: Number(allTime?.totalFee ?? 0),
       balance:
-        Number(allTime?.totalIncome ?? 0) - Number(allTime?.totalExpense ?? 0),
+        Number(allTime?.totalIncome ?? 0) -
+        Number(allTime?.totalExpense ?? 0) -
+        Number(allTime?.totalFee ?? 0),
       count: allTime?.count ?? 0,
     },
     monthlyTrend: monthlyTrend.map((m) => ({
@@ -353,12 +365,61 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {/* All-Time Saldo Banner */}
+      <Card className="border bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-blue-500/10 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-40 h-40 rounded-bl-full bg-emerald-500/[0.03]" />
+        <CardContent className="p-5 flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl p-3 bg-emerald-500/20">
+              <Wallet className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Saldo Semua Waktu
+              </p>
+              <p
+                className={`text-3xl font-bold tracking-tight tabular-nums ${data.allTime.balance >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}
+              >
+                {formatCurrency(data.allTime.balance, "IDR")}
+              </p>
+            </div>
+          </div>
+          <div className="text-right text-xs text-muted-foreground space-y-0.5">
+            <div className="flex items-center gap-1.5 justify-end">
+              <span className="size-2 rounded-full bg-emerald-500/60" />
+              <span>
+                Pemasukan {formatCurrency(data.allTime.totalIncome, "IDR")}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 justify-end">
+              <span className="size-2 rounded-full bg-red-500/60" />
+              <span>
+                Pengeluaran {formatCurrency(data.allTime.totalExpense, "IDR")}
+              </span>
+            </div>
+            {data.allTime.totalFee > 0 && (
+              <div className="flex items-center gap-1.5 justify-end">
+                <span className="size-2 rounded-full bg-violet-500/60" />
+                <span>Fee {formatCurrency(data.allTime.totalFee, "IDR")}</span>
+              </div>
+            )}
+            <div className="text-[10px] mt-0.5">
+              {data.allTime.count} transaksi total
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={`Saldo (${rangeLabel})`}
           value={formatCurrency(data.rangeSummary.balance, "IDR")}
-          subtitle={`${data.rangeSummary.count} transaksi`}
+          subtitle={
+            data.rangeSummary.totalFee > 0
+              ? `${data.rangeSummary.count} transaksi · Fee ${formatCurrency(data.rangeSummary.totalFee, "IDR")}`
+              : `${data.rangeSummary.count} transaksi`
+          }
           icon={Wallet}
           gradient="bg-gradient-to-br from-emerald-500/5 via-emerald-500/[0.02] to-transparent"
           textColor="text-emerald-600 dark:text-emerald-400"
@@ -374,6 +435,11 @@ export default async function DashboardPage({
         <StatCard
           title="Pengeluaran (Bulan Ini)"
           value={formatCurrency(data.mtd.totalExpense, "IDR")}
+          subtitle={
+            data.mtd.totalFee > 0
+              ? `Fee admin: ${formatCurrency(data.mtd.totalFee, "IDR")}`
+              : "biaya admin Rp0"
+          }
           icon={TrendingDown}
           gradient="bg-gradient-to-br from-rose-500/5 via-rose-500/[0.02] to-transparent"
           textColor="text-rose-600 dark:text-rose-400"

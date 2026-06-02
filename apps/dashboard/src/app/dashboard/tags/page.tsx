@@ -3,9 +3,16 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Hash, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Hash, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,6 +41,17 @@ export default function TagsPage() {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(colorOptions[0]);
   const [saving, setSaving] = useState(false);
+
+  // Edit state
+  const [editTag, setEditTag] = useState<Tag | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Delete state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -67,10 +85,57 @@ export default function TagsPage() {
       setNewName("");
       setNewColor(colorOptions[0]);
       fetchData();
-    } catch (err) {
+    } catch {
       toast.error("Gagal membuat tag");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEdit = (tag: Tag) => {
+    setEditTag(tag);
+    setEditName(tag.name);
+    setEditColor(tag.color || colorOptions[0]);
+    setEditOpen(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTag || !editName.trim()) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/tags/${editTag.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editName.trim(), color: editColor }),
+      });
+      if (!res.ok) throw new Error("Gagal mengupdate tag");
+      toast.success("Tag berhasil diupdate");
+      setEditOpen(false);
+      setEditTag(null);
+      fetchData();
+    } catch {
+      toast.error("Gagal mengupdate tag");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/tags/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus");
+      toast.success("Tag berhasil dihapus");
+      setDeleteId(null);
+      fetchData();
+    } catch {
+      toast.error("Gagal menghapus tag");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -161,17 +226,20 @@ export default function TagsPage() {
                   <Badge
                     key={tag.id}
                     variant="outline"
-                    className="gap-1.5 px-3 py-2 text-sm hover:bg-muted/30 transition-colors"
+                    className="gap-1.5 px-3 py-2 text-sm hover:bg-muted/30 transition-colors group cursor-pointer"
                     style={{
                       borderColor: tag.color || "#64748b",
                       color: tag.color || undefined,
                     }}
+                    onClick={() => openEdit(tag)}
+                    title="Klik untuk edit"
                   >
                     <span
                       className="size-2.5 rounded-full"
                       style={{ backgroundColor: tag.color || "#64748b" }}
                     />
                     {tag.name}
+                    <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 ml-0.5 transition-opacity" />
                   </Badge>
                 ))}
               </div>
@@ -179,6 +247,101 @@ export default function TagsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Tag</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nama Tag</label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Warna</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEditColor(color)}
+                    className={cn(
+                      "size-8 rounded-full border-2 transition-all",
+                      editColor === color
+                        ? "border-foreground scale-110 shadow-md"
+                        : "border-transparent hover:scale-105",
+                    )}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setEditOpen(false);
+                  setDeleteId(editTag?.id ?? null);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Hapus
+              </Button>
+              <div className="flex-1" />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={editSaving || !editName.trim()}>
+                {editSaving ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!deleteId}
+        onOpenChange={(v) => {
+          if (!v) setDeleteId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Tag?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tag yang dihapus akan terlepas dari semua transaksi terkait.
+            Tindakan ini tidak dapat dikembalikan.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Menghapus..." : "Hapus"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
