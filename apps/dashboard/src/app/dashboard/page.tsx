@@ -42,122 +42,128 @@ async function getDashboardData(userId: string, rangeDays: number) {
   const rangeStart = dayjs().subtract(rangeDays, "day").startOf("day").toDate();
   const now = new Date();
 
-  // Summary for selected range
-  const [rangeSummary] = await db
-    .select({
-      totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.isDeleted, false),
-        eq(transactions.isConfirmed, true),
-        gte(transactions.transactionDate, rangeStart),
-      ),
-    );
-
-  // All-time summary
-  const [allTime] = await db
-    .select({
-      totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.isDeleted, false),
-        eq(transactions.isConfirmed, true),
-      ),
-    );
-
-  // Month-to-date
+  // Parallelize independent queries
   const startOfMonth = dayjs().startOf("month").toDate();
-  const [mtd] = await db
-    .select({
-      totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.isDeleted, false),
-        eq(transactions.isConfirmed, true),
-        gte(transactions.transactionDate, startOfMonth),
-      ),
-    );
-
-  // Monthly trend (last 6 months)
   const sixMonthsAgo = dayjs().subtract(6, "month").startOf("month").toDate();
-  const monthlyTrend = await db
-    .select({
-      month: sql<string>`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`,
-      expense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
-    })
-    .from(transactions)
-    .where(
-      and(
+
+  const [
+    [rangeSummary],
+    [allTime],
+    [mtd],
+    monthlyTrend,
+    categoryBreakdown,
+    recentTransactions,
+    latestReport,
+  ] = await Promise.all([
+    // Summary for selected range
+    db
+      .select({
+        totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.isDeleted, false),
+          eq(transactions.isConfirmed, true),
+          gte(transactions.transactionDate, rangeStart),
+        ),
+      ),
+    // All-time summary
+    db
+      .select({
+        totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.isDeleted, false),
+          eq(transactions.isConfirmed, true),
+        ),
+      ),
+    // Month-to-date
+    db
+      .select({
+        totalExpense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        totalIncome: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.isDeleted, false),
+          eq(transactions.isConfirmed, true),
+          gte(transactions.transactionDate, startOfMonth),
+        ),
+      ),
+    // Monthly trend (last 6 months)
+    db
+      .select({
+        month: sql<string>`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`,
+        expense: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.isDeleted, false),
+          eq(transactions.isConfirmed, true),
+          gte(transactions.transactionDate, sixMonthsAgo),
+        ),
+      )
+      .groupBy(sql`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`),
+    // Category breakdown for range
+    db
+      .select({
+        name: sql<string>`COALESCE(tc.name, 'Tanpa Kategori')`,
+        icon: sql<string>`tc.icon`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(transactions)
+      .leftJoin(
+        sql`transaction_categories tc`,
+        sql`${transactions.categoryId} = tc.id`,
+      )
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          eq(transactions.isDeleted, false),
+          eq(transactions.isConfirmed, true),
+          eq(transactions.type, "expense"),
+          gte(transactions.transactionDate, rangeStart),
+        ),
+      )
+      .groupBy(sql`tc.name`, sql`tc.icon`)
+      .orderBy(sql`COALESCE(SUM(${transactions.amount}), 0) DESC`)
+      .limit(6),
+    // Recent transactions
+    db.query.transactions.findMany({
+      where: and(
         eq(transactions.userId, userId),
         eq(transactions.isDeleted, false),
-        eq(transactions.isConfirmed, true),
-        gte(transactions.transactionDate, sixMonthsAgo),
       ),
-    )
-    .groupBy(sql`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`)
-    .orderBy(sql`TO_CHAR(${transactions.transactionDate}, 'YYYY-MM')`);
-
-  // Category breakdown for range
-  const categoryBreakdown = await db
-    .select({
-      name: sql<string>`COALESCE(tc.name, 'Tanpa Kategori')`,
-      icon: sql<string>`tc.icon`,
-      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(transactions)
-    .leftJoin(
-      sql`transaction_categories tc`,
-      sql`${transactions.categoryId} = tc.id`,
-    )
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.isDeleted, false),
-        eq(transactions.isConfirmed, true),
-        eq(transactions.type, "expense"),
-        gte(transactions.transactionDate, rangeStart),
-      ),
-    )
-    .groupBy(sql`tc.name`, sql`tc.icon`)
-    .orderBy(sql`COALESCE(SUM(${transactions.amount}), 0) DESC`)
-    .limit(6);
-
-  // Recent transactions
-  const recentTransactions = await db.query.transactions.findMany({
-    where: and(
-      eq(transactions.userId, userId),
-      eq(transactions.isDeleted, false),
-    ),
-    with: {
-      category: true,
-      paymentMethod: true,
-    },
-    orderBy: desc(transactions.transactionDate),
-    limit: 8,
-  });
-
-  // Latest report
-  const latestReport = await db.query.reports.findFirst({
-    where: eq(reports.userId, userId),
-    orderBy: desc(reports.createdAt),
-  });
+      with: {
+        category: true,
+        paymentMethod: true,
+      },
+      orderBy: desc(transactions.transactionDate),
+      limit: 8,
+    }),
+    // Latest report
+    db.query.reports.findFirst({
+      where: eq(reports.userId, userId),
+      orderBy: desc(reports.createdAt),
+    }),
+  ]);
 
   // Savings rate
   const rangeIncome = Number(rangeSummary?.totalIncome ?? 0);
@@ -282,8 +288,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const user = await getCurrentUser();
-  const sp = await searchParams;
+  const [user, sp] = await Promise.all([getCurrentUser(), searchParams]);
   const rangeParam = (sp.range as RangeKey) || "30d";
   const rangeDays = rangeOptions.find((r) => r.key === rangeParam)?.days ?? 30;
   const data = await getDashboardData(user.id, rangeDays);

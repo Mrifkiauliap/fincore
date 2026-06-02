@@ -12,14 +12,11 @@
 
 function toBase64url(str: string): string {
   const base64 = btoa(unescape(encodeURIComponent(str)));
-  // Convert standard base64 to base64url: + → -, / → _, strip =
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function fromBase64url(encoded: string): string {
-  // Convert base64url back to standard base64: - → +, _ → /
   let base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
-  // Restore padding
   while (base64.length % 4 !== 0) {
     base64 += "=";
   }

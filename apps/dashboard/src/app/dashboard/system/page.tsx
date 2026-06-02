@@ -55,7 +55,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type LogData = {
   id: string;
@@ -139,6 +139,7 @@ function MediaThumbnail({ log }: { log: LogData }) {
   if (log.type === "image" && mediaUrl) {
     return (
       <div className="relative size-10 rounded-md overflow-hidden border bg-muted/30 shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={mediaUrl}
           alt="preview"
@@ -199,7 +200,10 @@ function ProcessingTimeline({ steps }: { steps: any[] }) {
             step.status === "processing" || step.status === "running";
 
           return (
-            <div key={idx} className="relative flex gap-4 pb-3 last:pb-0">
+            <div
+              key={step.step || idx}
+              className="relative flex gap-4 pb-3 last:pb-0"
+            >
               {/* Dot on timeline */}
               <div className="relative z-10 mt-1.5 shrink-0">
                 <div
@@ -331,6 +335,7 @@ function MediaPreview({ log }: { log: LogData }) {
   if (log.type === "image" && mediaUrl) {
     return (
       <div className="rounded-lg overflow-hidden border bg-muted/10">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={mediaUrl}
           alt="Media preview"
@@ -422,11 +427,7 @@ export default function SystemLogsPage() {
     successRate: 0,
   });
 
-  useEffect(() => {
-    fetchLogs();
-  }, [page, status, search]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -499,7 +500,11 @@ export default function SystemLogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, status]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -944,7 +949,7 @@ export default function SystemLogsPage() {
                             <TabsContent value="ai" className="pt-4 space-y-4">
                               {log.aiOutputs.map((ai: any, idx: number) => (
                                 <JsonBlock
-                                  key={idx}
+                                  key={`${ai.provider ?? "unknown"}-${ai.model ?? "N/A"}-${idx}`}
                                   label={`Output AI #${idx + 1} — ${ai.provider ?? "unknown"} / ${ai.model ?? "N/A"}`}
                                   data={{
                                     provider: ai.provider,
@@ -1045,7 +1050,7 @@ export default function SystemLogsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage(page - 1)}
+              onClick={() => setPage((p) => p - 1)}
               disabled={!hasPrev || loading}
             >
               <ChevronLeft className="mr-1 h-4 w-4" />
@@ -1054,7 +1059,7 @@ export default function SystemLogsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setPage(page + 1)}
+              onClick={() => setPage((p) => p + 1)}
               disabled={!hasNext || loading}
             >
               Next

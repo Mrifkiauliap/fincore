@@ -6,6 +6,23 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
+const MIME_MAP: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+  oga: "audio/ogg",
+  ogg: "audio/ogg",
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  pdf: "application/pdf",
+};
+
 /**
  * GET /api/media?p=<base64url-encoded-storagePath>
  *
@@ -67,24 +84,8 @@ export async function GET(request: NextRequest) {
 
   // 6. Determine Content-Type from extension (whitelist)
   const ext = relativePath.split(".").pop()?.toLowerCase() ?? "";
-  const mimeMap: Record<string, string> = {
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    webp: "image/webp",
-    gif: "image/gif",
-    svg: "image/svg+xml",
-    oga: "audio/ogg",
-    ogg: "audio/ogg",
-    m4a: "audio/mp4",
-    mp3: "audio/mpeg",
-    wav: "audio/wav",
-    mp4: "video/mp4",
-    webm: "video/webm",
-    pdf: "application/pdf",
-  };
 
-  const contentType = mimeMap[ext];
+  const contentType = MIME_MAP[ext];
   if (!contentType) {
     return NextResponse.json(
       { error: "Unsupported media type" },

@@ -229,11 +229,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function formatCurrency(amount: number, currency = "IDR"): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+const currencyFormatter = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+function formatCurrency(amount: number): string {
+  return currencyFormatter.format(amount);
 }

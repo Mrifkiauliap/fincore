@@ -29,7 +29,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface Category {
@@ -73,9 +73,10 @@ export default function BudgetsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const now = new Date();
-  const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
-  const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterMonth, setFilterMonth] = useState(
+    () => new Date().getMonth() + 1,
+  );
+  const [filterYear, setFilterYear] = useState(() => new Date().getFullYear());
 
   const [form, setForm] = useState({
     categoryId: "",
@@ -83,7 +84,7 @@ export default function BudgetsPage() {
     notes: "",
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -98,7 +99,7 @@ export default function BudgetsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterMonth, filterYear]);
 
   useEffect(() => {
     fetch("/api/categories?type=expense")
@@ -109,7 +110,7 @@ export default function BudgetsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [filterMonth, filterYear]);
+  }, [fetchData]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
