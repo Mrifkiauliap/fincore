@@ -1,4 +1,4 @@
-import getConfig from "@fincore/config";
+import "dotenv/config";
 import type { Config } from "drizzle-kit";
 
 export default {
@@ -6,6 +6,6 @@ export default {
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: getConfig("DATABASE_URL") as string,
+    url: process.env.DATABASE_URL as string,
   },
 } satisfies Config;
