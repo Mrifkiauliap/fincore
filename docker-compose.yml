@@ -83,7 +83,7 @@ services:
     # - "3015:3000"
     env_file: .env
     volumes:
-      - ${LOCAL_UPLOAD_DIR}:/uploads
+      - ${LOCAL_UPLOAD_DIR:-./uploads}:/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,7 +101,7 @@ services:
     restart: unless-stopped
     env_file: .env
     volumes:
-      - ${LOCAL_UPLOAD_DIR}:/uploads
+      - ${LOCAL_UPLOAD_DIR:-./uploads}:/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -135,9 +135,7 @@ services:
       - "3001:3001"
     env_file: .env
     volumes:
-      - ${FINCORE_TRIGGER_PREFIX}
-      - ${LOCAL_UPLOAD_DIR}:/uploads
-      - ${WAHA_BOT_NUMBER}
+      - ${LOCAL_UPLOAD_DIR:-./uploads}:/uploads
     depends_on:
       postgres:
         condition: service_healthy
