@@ -121,7 +121,7 @@ export default function DashboardError({
               Pengaturan
             </Link>
             <Link
-              href="/api/auth/logout"
+              href="/logout"
               className="rounded-lg border px-2.5 py-1.5 text-destructive/70 hover:text-destructive hover:border-destructive/30 transition-colors"
             >
               Logout & Masuk Ulang

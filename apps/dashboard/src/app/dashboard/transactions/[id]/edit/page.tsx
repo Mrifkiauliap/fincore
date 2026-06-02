@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TagsInput } from "@/components/ui/tags-input";
 import { Textarea } from "@/components/ui/textarea";
 import dayjs from "dayjs";
 import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
@@ -63,6 +64,7 @@ export default function TransactionFormPage() {
     notes: "",
     transactionDate: dayjs().format("YYYY-MM-DD"),
     isConfirmed: true,
+    tags: [] as string[],
   });
 
   // Build label maps so SelectValue shows display names, not raw IDs
@@ -112,6 +114,7 @@ export default function TransactionFormPage() {
             notes: tx.notes || "",
             transactionDate: dayjs(tx.transactionDate).format("YYYY-MM-DD"),
             isConfirmed: tx.isConfirmed,
+            tags: tx.tags ? tx.tags.map((t: any) => t.tag.name) : [],
           });
         })
         .catch(console.error);
@@ -365,6 +368,14 @@ export default function TransactionFormPage() {
             <CardTitle className="text-base">Detail Tambahan</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <TagsInput
+                value={form.tags}
+                onChange={(tags) => setForm({ ...form, tags })}
+                placeholder="Contoh: Belanja, Makanan"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="merchant">Merchant / Toko</Label>
               <Input

@@ -20,7 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Banknote, CreditCard, Plus, Smartphone, Wallet } from "lucide-react";
+import {
+  Banknote,
+  CreditCard,
+  Pencil,
+  Plus,
+  Smartphone,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -53,6 +61,7 @@ interface PaymentMethod {
   name: string;
   icon: string | null;
   type: string;
+  userId: string | null;
 }
 
 const typeLabels: Record<string, string> = {
@@ -80,7 +89,13 @@ export default function PaymentMethodsPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", type: "e_wallet", icon: "💵" });
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    type: "e_wallet",
+    icon: "💵",
+  });
+  const [isEdit, setIsEdit] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -99,25 +114,63 @@ export default function PaymentMethodsPage() {
     fetchData();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/payment-methods", {
-        method: "POST",
+      const url = isEdit
+        ? `/api/payment-methods/${form.id}`
+        : "/api/payment-methods";
+      const method = isEdit ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error("Gagal membuat metode");
-      toast.success("Metode pembayaran berhasil dibuat");
+      if (!res.ok) throw new Error("Gagal menyimpan metode pembayaran");
+      toast.success(
+        isEdit ? "Metode pembayaran diupdate" : "Metode pembayaran dibuat",
+      );
       setOpen(false);
-      setForm({ name: "", type: "e_wallet", icon: "💵" });
+      setForm({ id: "", name: "", type: "e_wallet", icon: "💵" });
+      setIsEdit(false);
       fetchData();
     } catch (err) {
-      toast.error("Gagal membuat metode pembayaran");
+      toast.error("Gagal menyimpan metode pembayaran");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Yakin hapus metode pembayaran custom ini?")) return;
+    try {
+      const res = await fetch(`/api/payment-methods/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus");
+      toast.success("Metode pembayaran dihapus");
+      fetchData();
+    } catch (err) {
+      toast.error("Gagal menghapus metode pembayaran");
+    }
+  };
+
+  const openEdit = (method: PaymentMethod) => {
+    setForm({
+      id: method.id,
+      name: method.name,
+      type: method.type,
+      icon: method.icon || "💵",
+    });
+    setIsEdit(true);
+    setOpen(true);
+  };
+
+  const openNew = () => {
+    setForm({ id: "", name: "", type: "e_wallet", icon: "💵" });
+    setIsEdit(false);
+    setOpen(true);
   };
 
   const grouped = methods.reduce(
@@ -142,16 +195,25 @@ export default function PaymentMethodsPage() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger
-            render={<Button variant="default" size="sm" className="gap-1.5" />}
+            render={
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5"
+                onClick={openNew}
+              />
+            }
           >
             <Plus className="h-4 w-4" />
             <span>Tambah</span>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Tambah Metode Baru</DialogTitle>
+              <DialogTitle>
+                {isEdit ? "Edit Metode Pembayaran" : "Tambah Metode Baru"}
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Nama</Label>
                 <Input
@@ -242,14 +304,52 @@ export default function PaymentMethodsPage() {
                     {items.map((method) => (
                       <div
                         key={method.id}
-                        className="flex items-center gap-3 rounded-xl border bg-background/60 p-3 hover:bg-background transition-colors"
+                        className="group flex items-center gap-3 rounded-xl border bg-background/60 p-3 hover:bg-background transition-colors"
                       >
                         <div className="shrink-0 rounded-lg bg-muted/50 p-2 text-xl">
                           {method.icon || "💵"}
                         </div>
-                        <span className="text-sm font-medium truncate">
-                          {method.name}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium truncate">
+                            {method.name}
+                          </span>
+                          {!method.userId && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-4 mt-0.5 ml-2 block w-fit"
+                            >
+                              Sistem
+                            </Badge>
+                          )}
+                          {method.userId && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] h-4 mt-0.5 ml-2 block w-fit border-emerald-500/30 text-emerald-600 bg-emerald-500/10"
+                            >
+                              Custom
+                            </Badge>
+                          )}
+                        </div>
+                        {method.userId && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                              onClick={() => openEdit(method)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDelete(method.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

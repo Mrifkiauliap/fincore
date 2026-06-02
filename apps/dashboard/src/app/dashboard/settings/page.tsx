@@ -610,7 +610,7 @@ export default function SettingsPage() {
             variant="outline"
             size="sm"
             className="w-full text-destructive hover:bg-destructive/5 hover:text-destructive gap-2"
-            onClick={() => router.push("/api/auth/logout")}
+            onClick={() => router.push("/logout")}
           >
             <LogOut className="h-4 w-4" />
             Keluar dari Semua Sesi

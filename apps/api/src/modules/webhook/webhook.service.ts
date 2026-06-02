@@ -147,6 +147,16 @@ export class WebhookService {
 
       // ── Command Routing (Bypass AI) ───────────────────────────────────────────
       if (messageType === MessageType.TEXT && lowerBody.startsWith(p)) {
+        // /daftar
+        if (isRegisterCommand) {
+          await sendWaMessage(
+            msg.from,
+            `✅ Anda sudah terdaftar atas nama *${user.name}*.`,
+            msg.id,
+          );
+          return;
+        }
+
         // /dashboard or /login
         if (lowerBody === p + "dashboard" || lowerBody === p + "login") {
           const magicLink = await this.authService.generateMagicLink(user.id);

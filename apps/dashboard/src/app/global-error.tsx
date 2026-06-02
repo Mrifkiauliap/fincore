@@ -82,7 +82,7 @@ export default function GlobalError({
               </div>
               <div className="mt-4">
                 <Link
-                  href="/api/auth/logout"
+                  href="/logout"
                   className="text-xs text-destructive hover:underline"
                 >
                   Logout & Masuk Ulang →

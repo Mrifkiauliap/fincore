@@ -1,7 +1,16 @@
+"use client";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
 
 export default function DashboardLoading() {
+  const [barHeights, setBarHeights] = useState<number[]>([]);
+
+  useEffect(() => {
+    setBarHeights(Array.from({ length: 6 }, () => 20 + Math.random() * 80));
+  }, []);
+
   return (
     <div className="flex-1 space-y-6 p-6 lg:p-8 animate-in fade-in duration-300">
       {/* Header skeleton */}
@@ -45,7 +54,7 @@ export default function DashboardLoading() {
                 >
                   <Skeleton
                     className="w-[10px] rounded-t"
-                    style={{ height: `${20 + Math.random() * 80}%` }}
+                    style={{ height: `${barHeights[i - 1] ?? 50}%` }}
                   />
                   <Skeleton className="h-3 w-8 rounded" />
                 </div>
