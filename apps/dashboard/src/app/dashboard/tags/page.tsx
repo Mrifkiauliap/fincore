@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ModalConfirm } from "@/components/ui/modal-confirm";
+import { useModalNotif } from "@/components/ui/modal-notif";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Hash, Pencil, Plus, Trash2 } from "lucide-react";
@@ -50,8 +52,11 @@ export default function TagsPage() {
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete state
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Tag | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Notification modal
+  const notif = useModalNotif();
 
   const fetchData = async () => {
     setLoading(true);
@@ -86,7 +91,11 @@ export default function TagsPage() {
       setNewColor(colorOptions[0]);
       fetchData();
     } catch {
-      toast.error("Gagal membuat tag");
+      notif.show(
+        "error",
+        "Gagal membuat tag",
+        "Terjadi kesalahan saat membuat tag. Silakan coba lagi.",
+      );
     } finally {
       setSaving(false);
     }
@@ -115,25 +124,33 @@ export default function TagsPage() {
       setEditTag(null);
       fetchData();
     } catch {
-      toast.error("Gagal mengupdate tag");
+      notif.show(
+        "error",
+        "Gagal mengupdate tag",
+        "Terjadi kesalahan saat mengupdate tag. Silakan coba lagi.",
+      );
     } finally {
       setEditSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/tags/${deleteId}`, {
+      const res = await fetch(`/api/tags/${deleteTarget.id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Gagal menghapus");
       toast.success("Tag berhasil dihapus");
-      setDeleteId(null);
+      setDeleteTarget(null);
       fetchData();
     } catch {
-      toast.error("Gagal menghapus tag");
+      notif.show(
+        "error",
+        "Gagal menghapus tag",
+        "Terjadi kesalahan saat menghapus tag. Silakan coba lagi.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -291,7 +308,7 @@ export default function TagsPage() {
                 className="gap-1.5"
                 onClick={() => {
                   setEditOpen(false);
-                  setDeleteId(editTag?.id ?? null);
+                  setDeleteTarget(editTag);
                 }}
               >
                 <Trash2 className="h-4 w-4" />
@@ -313,35 +330,23 @@ export default function TagsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={!!deleteId}
+      {/* Delete Confirmation Modal */}
+      <ModalConfirm
+        open={!!deleteTarget}
         onOpenChange={(v) => {
-          if (!v) setDeleteId(null);
+          if (!v) setDeleteTarget(null);
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Tag?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Tag yang dihapus akan terlepas dari semua transaksi terkait.
-            Tindakan ini tidak dapat dikembalikan.
-          </p>
-          <div className="flex gap-3 justify-end">
-            <Button variant="outline" onClick={() => setDeleteId(null)}>
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "Menghapus..." : "Hapus"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        variant="danger"
+        title="Hapus Tag?"
+        description={`Tag "${deleteTarget?.name}" akan terlepas dari semua transaksi terkait. Tindakan ini tidak dapat dikembalikan.`}
+        confirmLabel="Hapus"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Notification Modal */}
+      {notif.modal}
     </div>
   );
 }

@@ -8,10 +8,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ModalConfirm } from "@/components/ui/modal-confirm";
+import { useModalNotif } from "@/components/ui/modal-notif";
 import {
   Select,
   SelectContent,
@@ -24,9 +25,11 @@ import { formatCurrency } from "@fincore/utils";
 import {
   AlertTriangle,
   CheckCircle2,
+  Pencil,
   PiggyBank,
   Plus,
   Target,
+  Trash2,
   TrendingUp,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -73,12 +76,21 @@ export default function BudgetsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [isEdit, setIsEdit] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Month/Year filter state
   const [filterMonth, setFilterMonth] = useState(
     () => new Date().getMonth() + 1,
   );
   const [filterYear, setFilterYear] = useState(() => new Date().getFullYear());
 
+  // Modal notification state
+  const notif = useModalNotif();
+
   const [form, setForm] = useState({
+    id: "",
     categoryId: "",
     amount: "",
     notes: "",
@@ -112,12 +124,32 @@ export default function BudgetsPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openCreate = () => {
+    setIsEdit(false);
+    setForm({ id: "", categoryId: "", amount: "", notes: "" });
+    setOpen(true);
+  };
+
+  const openEdit = (budget: Budget) => {
+    setIsEdit(true);
+    setForm({
+      id: budget.id,
+      categoryId: budget.categoryId,
+      amount: budget.amount,
+      notes: "",
+    });
+    setOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/budgets", {
-        method: "POST",
+      const url = isEdit ? `/api/budgets/${form.id}` : "/api/budgets";
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categoryId: form.categoryId,
@@ -127,15 +159,44 @@ export default function BudgetsPage() {
           notes: form.notes,
         }),
       });
-      if (!res.ok) throw new Error("Gagal membuat budget");
-      toast.success("Budget berhasil dibuat");
+      if (!res.ok) throw new Error("Gagal menyimpan budget");
+      toast.success(
+        isEdit ? "Budget berhasil diupdate" : "Budget berhasil dibuat",
+      );
       setOpen(false);
-      setForm({ categoryId: "", amount: "", notes: "" });
+      setForm({ id: "", categoryId: "", amount: "", notes: "" });
+      setIsEdit(false);
       fetchData();
     } catch (err) {
-      toast.error("Gagal membuat budget");
+      notif.show(
+        "error",
+        "Gagal menyimpan budget",
+        "Terjadi kesalahan saat menyimpan data budget. Silakan coba lagi.",
+      );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/budgets/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus");
+      toast.success("Budget berhasil dihapus");
+      setDeleteId(null);
+      fetchData();
+    } catch (err) {
+      notif.show(
+        "error",
+        "Gagal menghapus budget",
+        "Terjadi kesalahan saat menghapus budget. Silakan coba lagi.",
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -155,61 +216,86 @@ export default function BudgetsPage() {
             Pantau anggaran bulanan per kategori
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger
-            render={<Button variant="default" size="sm" className="gap-1.5" />}
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah</span>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tambah Budget Baru</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Kategori</Label>
-                <Select
-                  value={form.categoryId || undefined}
-                  onValueChange={(v: string | null) =>
-                    setForm({ ...form, categoryId: v || "" })
-                  }
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      labels={Object.fromEntries(
-                        categories.map((c) => [c.id, `${c.icon} ${c.name}`]),
-                      )}
-                      placeholder="Pilih kategori"
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.icon} {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Jumlah Budget (Rp)</Label>
-                <Input
-                  type="number"
-                  placeholder="Contoh: 1000000"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={saving} className="w-full">
-                {saving ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-1.5"
+          onClick={openCreate}
+        >
+          <Plus className="h-4 w-4" />
+          <span>Tambah</span>
+        </Button>
       </div>
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isEdit ? "Edit Budget" : "Tambah Budget Baru"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Kategori</Label>
+              <Select
+                value={form.categoryId || undefined}
+                onValueChange={(v: string | null) =>
+                  setForm({ ...form, categoryId: v || "" })
+                }
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    labels={Object.fromEntries(
+                      categories.map((c) => [c.id, `${c.icon} ${c.name}`]),
+                    )}
+                    placeholder="Pilih kategori"
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.icon} {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Jumlah Budget (Rp)</Label>
+              <Input
+                type="number"
+                placeholder="Contoh: 1000000"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                required
+              />
+            </div>
+            <Button type="submit" disabled={saving} className="w-full">
+              {saving ? "Menyimpan..." : isEdit ? "Update" : "Simpan"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <ModalConfirm
+        open={!!deleteId}
+        onOpenChange={(v) => {
+          if (!v) setDeleteId(null);
+        }}
+        variant="danger"
+        title="Hapus Budget?"
+        description="Anggaran yang dihapus tidak dapat dikembalikan, tetapi ini tidak akan menghapus riwayat transaksi."
+        confirmLabel="Hapus"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+
+      {/* Notification Modal */}
+      {notif.modal}
 
       {/* Month/Year selector */}
       <div className="flex gap-3 items-center">
@@ -303,7 +389,7 @@ export default function BudgetsPage() {
             return (
               <Card
                 key={budget.id}
-                className={`border overflow-hidden transition-all hover:shadow-sm ${
+                className={`border overflow-hidden transition-all hover:shadow-sm group ${
                   isOver
                     ? "ring-1 ring-destructive/20"
                     : isWarn
@@ -360,10 +446,30 @@ export default function BudgetsPage() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold tabular-nums">
-                        {formatCurrency(budget.spent, "IDR")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 justify-end">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {formatCurrency(budget.spent, "IDR")}
+                        </p>
+                        <div className="flex gap-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEdit(budget)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteId(budget.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         dari {formatCurrency(amountNum, "IDR")}
                       </p>
                     </div>

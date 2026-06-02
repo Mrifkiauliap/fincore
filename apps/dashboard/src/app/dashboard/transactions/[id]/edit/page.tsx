@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ModalConfirm } from "@/components/ui/modal-confirm";
+import { useModalNotif } from "@/components/ui/modal-notif";
 import {
   Select,
   SelectContent,
@@ -49,6 +51,13 @@ export default function TransactionFormPage() {
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  // Delete confirmation state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Notification modal
+  const notif = useModalNotif();
 
   const [form, setForm] = useState({
     name: "",
@@ -151,14 +160,20 @@ export default function TransactionFormPage() {
       router.push("/dashboard/transactions");
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menyimpan");
+      notif.show(
+        "error",
+        "Gagal menyimpan transaksi",
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan. Silakan coba lagi.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("Yakin hapus transaksi ini?")) return;
+    setDeleting(true);
     try {
       const res = await fetch(`/api/transactions/${params.id}`, {
         method: "DELETE",
@@ -168,7 +183,14 @@ export default function TransactionFormPage() {
       router.push("/dashboard/transactions");
       router.refresh();
     } catch (err) {
-      toast.error("Gagal menghapus transaksi");
+      notif.show(
+        "error",
+        "Gagal menghapus transaksi",
+        "Terjadi kesalahan saat menghapus transaksi. Silakan coba lagi.",
+      );
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
     }
   };
 
@@ -193,7 +215,11 @@ export default function TransactionFormPage() {
         </div>
         <div className="flex-1" />
         {isEdit && (
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteOpen(true)}
+          >
             <Trash2 className="h-4 w-4" />
             <span className="hidden sm:inline">Hapus</span>
           </Button>
@@ -424,6 +450,22 @@ export default function TransactionFormPage() {
           </Button>
         </div>
       </form>
+
+      {/* Delete Confirmation Modal */}
+      <ModalConfirm
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        variant="danger"
+        title="Hapus Transaksi?"
+        description="Transaksi yang dihapus tidak dapat dikembalikan. Tindakan ini permanen."
+        confirmLabel="Hapus"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
+
+      {/* Notification Modal */}
+      {notif.modal}
     </div>
   );
 }
