@@ -134,6 +134,10 @@ services:
     ports:
       - "3001:3001"
     env_file: .env
+    volumes:
+      - ${FINCORE_TRIGGER_PREFIX}
+      - ${LOCAL_UPLOAD_DIR}:/uploads
+      - ${WAHA_BOT_NUMBER}
     depends_on:
       postgres:
         condition: service_healthy

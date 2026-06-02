@@ -2,16 +2,15 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import getConfig from "@fincore/config";
 import {
+  BarChart3,
+  BrainCircuit,
+  Clock,
   MessageCircle,
+  PiggyBank,
   ShieldCheck,
   Sparkles,
-  Zap,
   TrendingUp,
-  BrainCircuit,
-  BarChart3,
-  PiggyBank,
-  Repeat,
-  Clock,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -47,8 +46,8 @@ const featureHighlights = [
 ];
 
 export default function LoginPage() {
-  const waBotNumber = getConfig("WAHA_BOT_NUMBER");
-  const prefix = getConfig("FINCORE_TRIGGER_PREFIX");
+  const waBotNumber = getConfig("WAHA_BOT_NUMBER") ?? "";
+  const prefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background text-foreground transition-colors duration-300">
@@ -157,25 +156,35 @@ export default function LoginPage() {
             </div>
 
             {/* CTA Button */}
-            <Button
-              className="group relative w-full h-12 text-base font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40 hover:-translate-y-1 overflow-hidden"
-              size="lg"
-              nativeButton={false}
-              render={
-                <Link
-                  href={`https://wa.me/${waBotNumber}?text=${prefix}dashboard`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                />
-              }
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-primary via-violet-500 to-primary bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]" />
-              <span className="relative z-10 flex items-center">
-                <MessageCircle className="mr-2 h-5 w-5" />
-                Buka WhatsApp Bot
-                <ChevronRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Button>
+            {waBotNumber ? (
+              <Button
+                className="group relative w-full h-12 text-base font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40 hover:-translate-y-1 overflow-hidden"
+                size="lg"
+                nativeButton={false}
+                render={
+                  <Link
+                    href={`https://wa.me/${waBotNumber}?text=${prefix}dashboard`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-primary via-violet-500 to-primary bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]" />
+                <span className="relative z-10 flex items-center">
+                  <MessageCircle className="mr-2 h-5 w-5" />
+                  Buka WhatsApp Bot
+                  <ChevronRightIcon className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </Button>
+            ) : (
+              <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-sm text-amber-600 dark:text-amber-400 backdrop-blur-sm">
+                ⚠️ Bot WhatsApp belum dikonfigurasi. Setel{" "}
+                <code className="rounded bg-amber-500/20 px-1 py-0.5 font-mono text-xs">
+                  WAHA_BOT_NUMBER
+                </code>{" "}
+                di environment.
+              </div>
+            )}
 
             {/* Security Badge */}
             <div className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground/80">
