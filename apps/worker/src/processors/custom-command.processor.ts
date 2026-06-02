@@ -11,9 +11,16 @@ import {
 } from "@fincore/db";
 import { sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
+import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import { Injectable } from "@nestjs/common";
 import { Job, WorkerOptions } from "bullmq";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, asc, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface CustomCommandJobData {
   chatId: string;
@@ -214,11 +221,8 @@ export class CustomCommandProcessor extends BaseProcessor {
 
     let reply = `Hasil pencarian *"${query}"* (${results.length} transaksi):\n\n`;
     for (const tx of results) {
-      const date = new Date(tx.transactionDate).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
+      const tz = await this.getUserTimezone(userId);
+      const date = dayjs(tx.transactionDate).tz(tz).format("D MMM YYYY");
       const cat = tx.categoryName ? ` · ${tx.categoryName}` : "";
       reply += `• *${tx.name}*\n`;
       reply += `  ${formatter.format(Number(tx.totalAmount))} · ${typeLabel(tx.type)}${cat}\n`;
@@ -510,4 +514,13 @@ export class CustomCommandProcessor extends BaseProcessor {
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────────────
+  private async getUserTimezone(userId: string): Promise<string> {
+    const db = getDb();
+    const [user] = await db
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return user?.timezone ?? DEFAULT_TIMEZONE;
+  }
 }

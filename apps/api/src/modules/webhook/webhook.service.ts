@@ -1,18 +1,18 @@
+import { AuthService } from "@/modules/auth/auth.service";
 import { DRIZZLE } from "@/modules/database/database.module";
 import {
+  mapWahaTypeToMessageType,
   WahaMessagePayload,
   WahaWebhookPayload,
-  mapWahaTypeToMessageType,
 } from "@/modules/webhook/waha-payload.dto";
 import { FinanceGuardrail, MessageIntent } from "@fincore/ai";
 import getConfig from "@fincore/config";
-import { getDb, sessions, users } from "@fincore/db";
+import { getDb } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
 import { createValkeyConnection, enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
-import { extractPhone } from "@fincore/utils";
+import { dayjsInTz, DEFAULT_TIMEZONE, extractPhone } from "@fincore/utils";
 import { Inject, Injectable } from "@nestjs/common";
-import { eq } from "drizzle-orm";
 
 const logger = createLogger("webhook");
 
@@ -22,7 +22,10 @@ export class WebhookService {
   private readonly triggerPrefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
   private readonly valkey = createValkeyConnection();
 
-  constructor(@Inject(DRIZZLE) private readonly db: ReturnType<typeof getDb>) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: ReturnType<typeof getDb>,
+    private readonly authService: AuthService,
+  ) {}
 
   async handleIncoming(payload: WahaWebhookPayload): Promise<void> {
     if (payload.event !== "message") return;
@@ -129,33 +132,16 @@ export class WebhookService {
 
     if (!skipProcessing) {
       // ── Cek Registrasi User ───────────────────────────────────────────────────
-      const [user] = await this.db
-        .select()
-        .from(users)
-        .where(eq(users.phone, senderPhone))
-        .limit(1);
-
+      const user = await this.authService.checkUser(senderPhone);
       const isRegisterCommand = lowerBody.startsWith(p + "daftar");
 
       if (!user) {
-        if (isRegisterCommand) {
-          await enqueue(
-            QueueName.SETTINGS_COMMAND,
-            JobName.PROCESS_SETTINGS_COMMAND,
-            {
-              chatId: msg.from,
-              senderPhone,
-              commandText: cleanBody,
-            },
-          );
-        } else {
-          // Jika ada prefix tapi belum daftar, beri peringatan
-          await sendWaMessage(
-            msg.from,
-            `👋 Halo! Kamu belum terdaftar di FinCore.\n\nSilakan daftar terlebih dahulu dengan mengetik:\n*${this.triggerPrefix}daftar*`,
-            msg.id,
-          );
-        }
+        await this.authService.handleUnregisteredUser(
+          senderPhone,
+          msg.from,
+          isRegisterCommand,
+          cleanBody,
+        );
         return;
       }
 
@@ -163,21 +149,11 @@ export class WebhookService {
       if (messageType === MessageType.TEXT && lowerBody.startsWith(p)) {
         // /dashboard or /login
         if (lowerBody === p + "dashboard" || lowerBody === p + "login") {
-          const crypto = await import("crypto");
-          const token = crypto.randomBytes(48).toString("base64url");
-          const expiresAt = new Date(Date.now() + 300000); // 5 menit
-
-          await this.db.insert(sessions).values({
-            id: crypto.randomUUID(), // Temp session ID
-            userId: user.id,
-            magicToken: token,
-            magicTokenExpiresAt: expiresAt,
-            expiresAt,
-          });
+          const magicLink = await this.authService.generateMagicLink(user.id);
 
           await sendWaMessage(
             msg.from,
-            `🔑 *Akses Dashboard FinCore*\n\nKlik tautan sekali pakai di bawah ini untuk masuk ke Dashboard Anda (berlaku 5 menit):\n\n${getConfig("DASHBOARD_URL")}/api/auth/verify?token=${token}`,
+            `🔑 *Akses Dashboard FinCore*\n\nKlik tautan sekali pakai di bawah ini untuk masuk ke Dashboard Anda (berlaku 5 menit):\n\n${magicLink}`,
             msg.id,
           );
           return;
@@ -313,7 +289,11 @@ export class WebhookService {
           lowerBody.startsWith(p + "bantuan") ||
           lowerBody.startsWith(p + "help")
         ) {
-          await sendWaMessage(msg.from, this.getGreetingReply(), msg.id);
+          await sendWaMessage(
+            msg.from,
+            this.getGreetingReply(user?.timezone),
+            msg.id,
+          );
           return;
         }
 
@@ -344,7 +324,11 @@ export class WebhookService {
         }
 
         if (intentResult.intent === MessageIntent.GREETING) {
-          await sendWaMessage(msg.from, this.getGreetingReply(), msg.id);
+          await sendWaMessage(
+            msg.from,
+            this.getGreetingReply(user?.timezone),
+            msg.id,
+          );
           return;
         }
 
@@ -425,7 +409,7 @@ export class WebhookService {
   // ─── Ack messages per type ────────────────────────────────────────────────
   private getAckMessage(type: MessageType): string {
     const messages: Record<MessageType, string> = {
-      [MessageType.TEXT]: "Mencatat...",
+      [MessageType.TEXT]: "Mencatat transaksi...",
       [MessageType.VOICE]: "Mendengarkan voice note...",
       [MessageType.IMAGE]: "Membaca gambar/struk...",
       [MessageType.DOCUMENT]: "Membaca dokumen...",
@@ -434,8 +418,8 @@ export class WebhookService {
     return messages[type] ?? "Memproses...";
   }
 
-  private getGreetingReply(): string {
-    const hour = new Date().getHours();
+  private getGreetingReply(userTimezone?: string | null): string {
+    const hour = dayjsInTz(userTimezone ?? DEFAULT_TIMEZONE).hour();
     const salam =
       hour < 11
         ? "Selamat pagi"

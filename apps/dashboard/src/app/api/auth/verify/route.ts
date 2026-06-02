@@ -15,9 +15,13 @@ export async function GET(request: NextRequest) {
 
   const db = getDb();
 
+  // Hash the token since it's stored hashed in the DB
+  const crypto = await import("crypto");
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
   // Cari session yang cocok dengan magic token ini
   const sessionRecord = await db.query.sessions.findFirst({
-    where: eq(sessions.magicToken, token),
+    where: eq(sessions.magicToken, hashedToken),
   });
 
   if (!sessionRecord) {
