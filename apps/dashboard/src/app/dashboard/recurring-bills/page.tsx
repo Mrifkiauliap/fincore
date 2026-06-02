@@ -8,7 +8,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,8 +26,10 @@ import {
   Banknote,
   CalendarClock,
   Clock,
+  Pencil,
   Plus,
   Repeat,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -63,20 +64,26 @@ const frequencyBadge: Record<
   YEARLY: { variant: "outline", color: "" },
 };
 
+const emptyForm = {
+  id: "",
+  name: "",
+  amount: "",
+  frequency: "MONTHLY" as string,
+  dayOfMonth: "1",
+  nextReminderAt: dayjs().add(1, "month").date(1).format("YYYY-MM-DD"),
+  notes: "",
+};
+
 export default function RecurringBillsPage() {
   const [bills, setBills] = useState<RecurringBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    amount: "",
-    frequency: "MONTHLY",
-    dayOfMonth: "1",
-    nextReminderAt: dayjs().add(1, "month").date(1).format("YYYY-MM-DD"),
-    notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const fetchData = async () => {
     setLoading(true);
@@ -95,38 +102,79 @@ export default function RecurringBillsPage() {
     fetchData();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openCreate = () => {
+    setIsEdit(false);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const openEdit = (bill: RecurringBill) => {
+    setIsEdit(true);
+    setForm({
+      id: bill.id,
+      name: bill.name,
+      amount: bill.amount || "",
+      frequency: bill.frequency,
+      dayOfMonth: bill.dayOfMonth?.toString() || "1",
+      nextReminderAt: dayjs(bill.nextReminderAt).format("YYYY-MM-DD"),
+      notes: bill.notes || "",
+    });
+    setOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/recurring-bills", {
-        method: "POST",
+      const url = isEdit
+        ? `/api/recurring-bills/${form.id}`
+        : "/api/recurring-bills";
+      const method = isEdit ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
           amount: form.amount || null,
           frequency: form.frequency,
-          dayOfMonth: parseInt(form.dayOfMonth),
+          dayOfMonth: parseInt(form.dayOfMonth) || null,
           nextReminderAt: form.nextReminderAt,
           notes: form.notes || null,
         }),
       });
-      if (!res.ok) throw new Error("Gagal membuat tagihan");
-      toast.success("Tagihan berkala berhasil dibuat");
+      if (!res.ok) throw new Error("Gagal menyimpan tagihan");
+      toast.success(
+        isEdit
+          ? "Tagihan berkala berhasil diupdate"
+          : "Tagihan berkala berhasil dibuat",
+      );
       setOpen(false);
-      setForm({
-        name: "",
-        amount: "",
-        frequency: "MONTHLY",
-        dayOfMonth: "1",
-        nextReminderAt: dayjs().add(1, "month").date(1).format("YYYY-MM-DD"),
-        notes: "",
-      });
+      setForm(emptyForm);
+      setIsEdit(false);
       fetchData();
-    } catch (err) {
-      toast.error("Gagal membuat tagihan berkala");
+    } catch {
+      toast.error("Gagal menyimpan tagihan berkala");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/recurring-bills/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Gagal menghapus");
+      toast.success("Tagihan berkala berhasil dihapus");
+      setDeleteId(null);
+      fetchData();
+    } catch {
+      toast.error("Gagal menghapus tagihan berkala");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -165,98 +213,132 @@ export default function RecurringBillsPage() {
             Pantau tagihan rutin dan pengingat jatuh tempo
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger
-            render={<Button variant="default" size="sm" className="gap-1.5" />}
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah</span>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tambah Tagihan Berkala</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-1.5"
+          onClick={openCreate}
+        >
+          <Plus className="h-4 w-4" />
+          <span>Tambah</span>
+        </Button>
+      </div>
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isEdit ? "Edit Tagihan Berkala" : "Tambah Tagihan Berkala"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nama Tagihan</Label>
+              <Input
+                placeholder="Contoh: Tagihan Listrik"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nama Tagihan</Label>
+                <Label>Jumlah (Rp)</Label>
                 <Input
-                  placeholder="Contoh: Tagihan Listrik"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  type="number"
+                  placeholder="0"
+                  value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Frekuensi</Label>
+                <Select
+                  value={form.frequency}
+                  onValueChange={(v: string | null) =>
+                    setForm({ ...form, frequency: v || "MONTHLY" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      labels={{
+                        MONTHLY: "Bulanan",
+                        WEEKLY: "Mingguan",
+                        YEARLY: "Tahunan",
+                        DAILY: "Harian",
+                      }}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MONTHLY">Bulanan</SelectItem>
+                    <SelectItem value="WEEKLY">Mingguan</SelectItem>
+                    <SelectItem value="YEARLY">Tahunan</SelectItem>
+                    <SelectItem value="DAILY">Harian</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tanggal (1-31)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={form.dayOfMonth}
+                  onChange={(e) =>
+                    setForm({ ...form, dayOfMonth: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Pengingat Berikutnya</Label>
+                <Input
+                  type="date"
+                  value={form.nextReminderAt}
+                  onChange={(e) =>
+                    setForm({ ...form, nextReminderAt: e.target.value })
+                  }
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Jumlah (Rp)</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={form.amount}
-                    onChange={(e) =>
-                      setForm({ ...form, amount: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Frekuensi</Label>
-                  <Select
-                    value={form.frequency}
-                    onValueChange={(v: string | null) =>
-                      setForm({ ...form, frequency: v || "MONTHLY" })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        labels={{
-                          MONTHLY: "Bulanan",
-                          WEEKLY: "Mingguan",
-                          YEARLY: "Tahunan",
-                          DAILY: "Harian",
-                        }}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MONTHLY">Bulanan</SelectItem>
-                      <SelectItem value="WEEKLY">Mingguan</SelectItem>
-                      <SelectItem value="YEARLY">Tahunan</SelectItem>
-                      <SelectItem value="DAILY">Harian</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tanggal (1-31)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={form.dayOfMonth}
-                    onChange={(e) =>
-                      setForm({ ...form, dayOfMonth: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Pengingat Berikutnya</Label>
-                  <Input
-                    type="date"
-                    value={form.nextReminderAt}
-                    onChange={(e) =>
-                      setForm({ ...form, nextReminderAt: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-              <Button type="submit" disabled={saving} className="w-full">
-                {saving ? "Menyimpan..." : "Simpan"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </div>
+            <Button type="submit" disabled={saving} className="w-full">
+              {saving ? "Menyimpan..." : isEdit ? "Update" : "Simpan"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!deleteId}
+        onOpenChange={(v) => {
+          if (!v) setDeleteId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hapus Tagihan Berkala?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tagihan yang dihapus tidak dapat dikembalikan.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Menghapus..." : "Hapus"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Stats */}
       {!loading && bills.length > 0 && (
@@ -338,7 +420,7 @@ export default function RecurringBillsPage() {
             return (
               <Card
                 key={bill.id}
-                className={`border overflow-hidden transition-all hover:shadow-sm ${
+                className={`border overflow-hidden transition-all hover:shadow-sm group ${
                   overdue
                     ? "ring-1 ring-destructive/20 bg-destructive/[0.02]"
                     : ""
@@ -386,19 +468,41 @@ export default function RecurringBillsPage() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div
-                        className={`flex items-center gap-1.5 text-sm font-medium ${
-                          overdue ? "text-destructive" : "text-muted-foreground"
-                        }`}
-                      >
-                        {overdue ? (
-                          <AlertCircle className="h-4 w-4" />
-                        ) : (
-                          <CalendarClock className="h-4 w-4" />
-                        )}
-                        <span>
-                          {dayjs(bill.nextReminderAt).format("DD/MM/YYYY")}
-                        </span>
+                      <div className="flex items-center gap-1">
+                        <div
+                          className={`flex items-center gap-1.5 text-sm font-medium ${
+                            overdue
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {overdue ? (
+                            <AlertCircle className="h-4 w-4" />
+                          ) : (
+                            <CalendarClock className="h-4 w-4" />
+                          )}
+                          <span>
+                            {dayjs(bill.nextReminderAt).format("DD/MM/YYYY")}
+                          </span>
+                        </div>
+                        <div className="flex gap-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEdit(bill)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteId(bill.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       <p
                         className={`text-xs mt-1 flex items-center gap-1 justify-end ${
