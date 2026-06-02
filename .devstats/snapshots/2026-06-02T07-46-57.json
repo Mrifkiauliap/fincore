@@ -1,0 +1,1418 @@
+{
+  "metadata": {
+    "snapshotId": "E-X-BvzOEfXcLOpXVHIx0",
+    "createdAt": "2026-06-02T07:46:57.237Z",
+    "hostname": "genlaptop",
+    "platform": "win32",
+    "nodeVersion": "v22.18.0",
+    "projectName": "FinCore",
+    "gitBranch": "eksperimental",
+    "gitCommit": "5da2cd3"
+  },
+  "files": {
+    ".dockerignore": {
+      "hash": "bf7e155ad360d395684e1e1112971a74e9d259e269ee835d041593d9f54319c0",
+      "lines": 14,
+      "size": 170,
+      "mtime": 1779989532135.265
+    },
+    ".env.example": {
+      "hash": "f99ba56cca08bac3c37344c561dc17d61f038176cf626f8af6082f59a1eb40fa",
+      "lines": 108,
+      "size": 5680,
+      "mtime": 1780348954962.1516
+    },
+    ".gitignore": {
+      "hash": "4828de8cac870652d8bdb4a3b8d1fae855967faef1bc0b7f986d5abe329787d2",
+      "lines": 45,
+      "size": 338,
+      "mtime": 1779989532137.419
+    },
+    "docker-compose.yml": {
+      "hash": "b43c06660a025d14a6875eb4ab29606841b96786ecf754b07a0dda5ad3d2df49",
+      "lines": 151,
+      "size": 4868,
+      "mtime": 1780385978577.7158
+    },
+    "package.json": {
+      "hash": "cf51c1fc957abe39279596df3298e3c8d4c87579176a878c35c60108de347796",
+      "lines": 51,
+      "size": 1655,
+      "mtime": 1779993519455.254
+    },
+    "pembelajaran.md": {
+      "hash": "a8bfe11019f7929a9255c38c9eb1292fb86cbbee328b5663c061481b54efe71b",
+      "lines": 49,
+      "size": 2312,
+      "mtime": 1779906913504.7705
+    },
+    "pnpm-workspace.yaml": {
+      "hash": "c56d50ca8980872ca8e93c5dff2f699ec4e4059dc4ad64c96f52645acf747f3e",
+      "lines": 25,
+      "size": 356,
+      "mtime": 1780348955015.611
+    },
+    "README.md": {
+      "hash": "8fd38391fdcceafdf23e85e002da311b2c2924ded6dfcda3ad56815768de4a6e",
+      "lines": 152,
+      "size": 3872,
+      "mtime": 1779989532137.9373
+    },
+    "techstack.md": {
+      "hash": "e7b4f8c0751a671d3e70763b08e2d8b8350ce77d6f3b85b6045cd8cfaffec689",
+      "lines": 89,
+      "size": 4655,
+      "mtime": 1779989532174.943
+    },
+    "tsconfig.json": {
+      "hash": "b66c67118d8b4ed153504628ae0f4c07047a6b031760e9359093072afbdbe05a",
+      "lines": 29,
+      "size": 653,
+      "mtime": 1780348955015.611
+    },
+    "turbo.json": {
+      "hash": "452411a42b33638ce9764a5098c062147fbe1d1c6b09c351b92e96093c1e19e9",
+      "lines": 57,
+      "size": 1118,
+      "mtime": 1780348955015.611
+    },
+    ".husky/pre-commit": {
+      "hash": "077a839158ec5e025ce1239fd7357711e9dc5a3783d1b355c3fb096f78ac677b",
+      "lines": 3,
+      "size": 77,
+      "mtime": 1779906170229.5154
+    },
+    ".husky/pre-push": {
+      "hash": "91937f14c8178dfc55ff9a60242d3c9405a1dd7de7f6211277e4aa77291237d7",
+      "lines": 14,
+      "size": 376,
+      "mtime": 1779906179292.814
+    },
+    "docs/database_schema.md": {
+      "hash": "47940ab4e69de39b009eee254b68046c455e32aea4eebd8ac8726c8d422f2880",
+      "lines": 280,
+      "size": 9583,
+      "mtime": 1780162810407.6223
+    },
+    "docs/fincore-brd.md": {
+      "hash": "3633d3755ad1f4608e26f6668040e6dfd22c5eaff5c241ed4208b35d17931e08",
+      "lines": 402,
+      "size": 18436,
+      "mtime": 1779814386897.256
+    },
+    "docs/fincore-future-proof-plan.md": {
+      "hash": "3265bdb97f7cfa9c23e6c0c2c0282499e5578bbde4ad50e6644d9c438bfb0ff1",
+      "lines": 606,
+      "size": 21242,
+      "mtime": 1780162810409.7002
+    },
+    "docs/fincore-prd.md": {
+      "hash": "c755c045cc55d80bd936690530f4c4d5867276acf379e732feda489d1e54084e",
+      "lines": 353,
+      "size": 13731,
+      "mtime": 1779814388431.0508
+    },
+    ".github/workflows/deploy.yml": {
+      "hash": "dbf9ee1478ee85acaf41feb33f3154e6214c551d9dc227d574d28cb31f4bcdd7",
+      "lines": 33,
+      "size": 1143,
+      "mtime": 1780348955298.062
+    },
+    ".husky/_/.gitignore": {
+      "hash": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1",
+      "lines": 1,
+      "size": 1,
+      "mtime": 1780386281956.514
+    },
+    ".husky/_/applypatch-msg": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281959.5706
+    },
+    ".husky/_/commit-msg": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281959.5706
+    },
+    ".husky/_/h": {
+      "hash": "70200b200ca709b0622784f93839a5b2872333a917a09afddefd7dc2d8cdc680",
+      "lines": 22,
+      "size": 551,
+      "mtime": 1779906236776.018
+    },
+    ".husky/_/husky.sh": {
+      "hash": "21122903fca7209a13c991e5be68780636e28f1b8f0ae7ea07ed0065dfe37268",
+      "lines": 9,
+      "size": 160,
+      "mtime": 1780386281961.1074
+    },
+    ".husky/_/post-applypatch": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.085
+    },
+    ".husky/_/post-checkout": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.5955
+    },
+    ".husky/_/post-commit": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281959.5706
+    },
+    ".husky/_/post-merge": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.5955
+    },
+    ".husky/_/post-rewrite": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.5955
+    },
+    ".husky/_/pre-applypatch": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.085
+    },
+    ".husky/_/pre-auto-gc": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281961.1074
+    },
+    ".husky/_/pre-commit": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281959.0613
+    },
+    ".husky/_/pre-merge-commit": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281959.0613
+    },
+    ".husky/_/pre-push": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.5955
+    },
+    ".husky/_/pre-rebase": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281960.085
+    },
+    ".husky/_/prepare-commit-msg": {
+      "hash": "34fe496008be71d8fdd446b2cce81e4bb0406109c130eafc583fbd9fe33244e2",
+      "lines": 2,
+      "size": 39,
+      "mtime": 1780386281959.0613
+    },
+    "apps/dashboard/.gitignore": {
+      "hash": "207e265ff4901f9ad9f96d8ce08530e04f9fc600815472a66d0a446096d654cd",
+      "lines": 41,
+      "size": 480,
+      "mtime": 1780348954964.6304
+    },
+    "apps/dashboard/AGENTS.md": {
+      "hash": "80bc700496b31a211e184aa092ef14328dbcbbbd7cb9594d113e80e9ef1c7758",
+      "lines": 7,
+      "size": 329,
+      "mtime": 1780348954965.1628
+    },
+    "apps/dashboard/CLAUDE.md": {
+      "hash": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "lines": 1,
+      "size": 11,
+      "mtime": 1780348954965.1628
+    },
+    "apps/dashboard/components.json": {
+      "hash": "7f89b1e9e3995be8620be3162df8e08b7dd512f894fb0accb559193138fdc390",
+      "lines": 25,
+      "size": 520,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/eslint.config.mjs": {
+      "hash": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
+      "lines": 18,
+      "size": 465,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/next-env.d.ts": {
+      "hash": "7b550dda9686c16f36a17bf9051d5dbf31e98555b30d114ac49fc49a1e712651",
+      "lines": 6,
+      "size": 247,
+      "mtime": 1780351770516.099
+    },
+    "apps/dashboard/next.config.ts": {
+      "hash": "0df9ee81602e39ef42b5cd3a83cfb4eba60da615518ecfe67cc28b4c75049ddc",
+      "lines": 13,
+      "size": 244,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/package.json": {
+      "hash": "1c2df07ccfcea06b45b060cdb3d7c281c252b9ebf644ef61287057c62353706e",
+      "lines": 43,
+      "size": 1088,
+      "mtime": 1780351115245.8857
+    },
+    "apps/dashboard/postcss.config.mjs": {
+      "hash": "dfac7ac2d86d326a0e5adb024e7943c181393ed17a5fcb8f0315b24c7da6ddde",
+      "lines": 7,
+      "size": 94,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/README.md": {
+      "hash": "60b55ff7df79af72590f9524208e46642bc32bdc175cdad41349681c0e2f958f",
+      "lines": 36,
+      "size": 1450,
+      "mtime": 1780348954965.6748
+    },
+    "apps/dashboard/tsconfig.json": {
+      "hash": "5d992837d9d62e7d7c4e82f44343b9260b1126c9649d5a648f7c678dd23f8d4a",
+      "lines": 40,
+      "size": 1010,
+      "mtime": 1780348954997.991
+    },
+    "apps/api/nest-cli.json": {
+      "hash": "b3b737daa7cd9620527f9bfbe1aa7f4ebf2b0b7e2db773304e5e7670f7f2b076",
+      "lines": 9,
+      "size": 194,
+      "mtime": 1779815186637.6294
+    },
+    "apps/api/package.json": {
+      "hash": "69fcfbc110a3ae859ceba8c5d131b6310ca332fce25f370a1d9c7595e460973e",
+      "lines": 40,
+      "size": 1094,
+      "mtime": 1780348954962.667
+    },
+    "apps/api/tsconfig.json": {
+      "hash": "73e738c5f766961cefdd8544e83605fb60cd18b0c10b4cd3d55e9d536bdb589a",
+      "lines": 16,
+      "size": 432,
+      "mtime": 1780348954964.184
+    },
+    "apps/sender/nest-cli.json": {
+      "hash": "ae1516728e3fc7bf1889aea723877f0586710aa4eb5a4e63ae1b5552f700404b",
+      "lines": 8,
+      "size": 172,
+      "mtime": 1779817554663.149
+    },
+    "apps/sender/package.json": {
+      "hash": "c854d9912a10676da6c0ed7dbf5aaaa0272a3d3163cbb3bd2020f37e703a14c7",
+      "lines": 33,
+      "size": 852,
+      "mtime": 1780348954997.991
+    },
+    "apps/sender/tsconfig.json": {
+      "hash": "d25cd8c37756f0196bf0e8e996f7767c42b9a8e6e5c9ecd03b8f681b71358f14",
+      "lines": 16,
+      "size": 382,
+      "mtime": 1779819924744.943
+    },
+    "apps/worker/nest-cli.json": {
+      "hash": "ae1516728e3fc7bf1889aea723877f0586710aa4eb5a4e63ae1b5552f700404b",
+      "lines": 8,
+      "size": 172,
+      "mtime": 1779819783232.8418
+    },
+    "apps/worker/package.json": {
+      "hash": "d320f25edbf015fec64c82d8d072eaa2bb4d11748ec34588e424e4dea1e146aa",
+      "lines": 42,
+      "size": 1242,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/tsconfig.json": {
+      "hash": "d25cd8c37756f0196bf0e8e996f7767c42b9a8e6e5c9ecd03b8f681b71358f14",
+      "lines": 16,
+      "size": 382,
+      "mtime": 1779820794393.005
+    },
+    "docs/task/task1.md": {
+      "hash": "942edb5e8dfd2a995c963ddc6ee30e8e6cc691be4676d1df72f1a47588a324ea",
+      "lines": 535,
+      "size": 18577,
+      "mtime": 1779808996561.7412
+    },
+    "docs/task/task2.md": {
+      "hash": "90154441cd0045ad342539405df5a7478f2b43dd553118c22f5628a0a99865ea",
+      "lines": 110,
+      "size": 4557,
+      "mtime": 1780162810410.2268
+    },
+    "docs/task/task3.md": {
+      "hash": "f33d4001a61765990e9fd3290eab2e22270e824368948f78ea3ce903dd2db358",
+      "lines": 129,
+      "size": 4730,
+      "mtime": 1780162810410.2268
+    },
+    "docs/task/task4.md": {
+      "hash": "95ec4c5a8702977956568b021b4b3ffacca9e81753e33378b7607487699b7663",
+      "lines": 172,
+      "size": 6797,
+      "mtime": 1780162810411.2324
+    },
+    "infrastructure/docker/api.Dockerfile": {
+      "hash": "365d31ef268ad32895a910cde8c5ff0834ffc325c67c93bfa361611aa84fa4ef",
+      "lines": 52,
+      "size": 1540,
+      "mtime": 1780349998561.7095
+    },
+    "infrastructure/docker/dashboard.Dockerfile": {
+      "hash": "02f9f057994feaa755b9f19012ccd0c2bbfe535aa6d03f84e32e0d7c531f8e12",
+      "lines": 61,
+      "size": 2121,
+      "mtime": 1780385994758.146
+    },
+    "infrastructure/docker/sender.Dockerfile": {
+      "hash": "9c79256f8dee08d526f0f1c87d606542b49f54bdf9cd6b8fd1d10ebdc23cf50b",
+      "lines": 48,
+      "size": 1400,
+      "mtime": 1780349998562.7393
+    },
+    "infrastructure/docker/worker.Dockerfile": {
+      "hash": "37e3bfd3b68d05c527208578b442a7d9d79ea9fbc7494c27765fe9b46a0fabb1",
+      "lines": 49,
+      "size": 1452,
+      "mtime": 1780349998562.7393
+    },
+    "infrastructure/scripts/reset-db.js": {
+      "hash": "8edb37bf079603a7c7945614dc048aa0dcbdcc8edc439563ea36c41d96b41814",
+      "lines": 68,
+      "size": 2009,
+      "mtime": 1779951242910.2427
+    },
+    "packages/config/package.json": {
+      "hash": "656f5accbcde0ecf7e222d7fd35d7543d5de004d369483f2e52beba5208de0b7",
+      "lines": 19,
+      "size": 371,
+      "mtime": 1780348955007.301
+    },
+    "packages/config/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813746433.389
+    },
+    "packages/ai/package.json": {
+      "hash": "09befacc47a573de799f47527bf63905e335dacd9cb3409e79e816799adc4161",
+      "lines": 25,
+      "size": 591,
+      "mtime": 1780386159163.1606
+    },
+    "packages/ai/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813746433.389
+    },
+    "packages/db/0000_bizarre_invisible_woman.sql": {
+      "hash": "29a58ba8f468ff5a73b643552c37c00ae9b20cd4a4d90151b3a0010b6a1a605c",
+      "lines": 319,
+      "size": 18143,
+      "mtime": 1780348955007.301
+    },
+    "packages/db/drizzle.config.ts": {
+      "hash": "4e1f642d5f436c95ead4a9841e38084dff140ce7ec060fd8b68f54a06b99a954",
+      "lines": 11,
+      "size": 272,
+      "mtime": 1779799728579.6328
+    },
+    "packages/db/package.json": {
+      "hash": "6ea291b9db32ee29d0807ebfee5d1dcb0ff03954ddd93ae89c5dc7701b37dffd",
+      "lines": 30,
+      "size": 767,
+      "mtime": 1780348955007.301
+    },
+    "packages/db/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813746447.885
+    },
+    "packages/contracts/package.json": {
+      "hash": "07efade006f4b00b8122b741bc64bc11af47eb328d7f4181dda4587d4eaf4f98",
+      "lines": 19,
+      "size": 387,
+      "mtime": 1780348955007.301
+    },
+    "packages/contracts/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813724367.24
+    },
+    "packages/event-publisher/package.json": {
+      "hash": "3ef34ad444fa074137839ae8b8b1f6d2ec486c9bc7752b9796196b35159122d2",
+      "lines": 24,
+      "size": 574,
+      "mtime": 1780348955014.2588
+    },
+    "packages/event-publisher/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779989532169.9246
+    },
+    "packages/logger/package.json": {
+      "hash": "a0e3e39db595585b0af8e06ae5256bc6f9df1438560177e52fc6349f934a2ef5",
+      "lines": 21,
+      "size": 452,
+      "mtime": 1780348955014.6052
+    },
+    "packages/logger/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813894315.4702
+    },
+    "packages/queue/package.json": {
+      "hash": "ed3c107b5abbd6acc4ba9d9d9bc39810a0f77f5d6d68ec5a263129d05aa01f6b",
+      "lines": 22,
+      "size": 488,
+      "mtime": 1780348955014.6052
+    },
+    "packages/queue/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813926772.96
+    },
+    "packages/shared/package.json": {
+      "hash": "a44508fd1eb56c50f8e9319c57fe769ea5e1fb7a3b4080cb38dc457823fd48b3",
+      "lines": 15,
+      "size": 300,
+      "mtime": 1780348955015.611
+    },
+    "packages/shared/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779813746433.389
+    },
+    "packages/storage/.gitkeep": {
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "lines": 0,
+      "size": 0,
+      "mtime": 1779824232150.5117
+    },
+    "packages/storage/package.json": {
+      "hash": "468ba3519533ccd100c10e1a22d721e222a1d3d7df838fc982c9839d68211c18",
+      "lines": 19,
+      "size": 401,
+      "mtime": 1780348955015.611
+    },
+    "packages/storage/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779989532172.435
+    },
+    "packages/utils/package.json": {
+      "hash": "d499f0a647c114d947f1ff679eb211da9b1072ea167461548ec04f668f7808a7",
+      "lines": 18,
+      "size": 348,
+      "mtime": 1780348955015.611
+    },
+    "packages/utils/tsconfig.json": {
+      "hash": "300af33b9c33a14e06e83fc57b4cece011c63bb373e6486dcce29c54573e81ae",
+      "lines": 10,
+      "size": 229,
+      "mtime": 1779989532173.9392
+    },
+    "apps/dashboard/docs/API.md": {
+      "hash": "683a6041f0789313a5e6eb2eae7cc9f4b583607408599ef988b948a98509a4eb",
+      "lines": 633,
+      "size": 13923,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/docs/PAGES.md": {
+      "hash": "0780516a60ef99e61c5f0d99c29b1268a3453e9015856563081615eda0a58600",
+      "lines": 552,
+      "size": 20392,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/docs/README.md": {
+      "hash": "a04f4640dd154b35f4451fb5cde1fd53ac04b3bd9ca41c145a34395310506d48",
+      "lines": 221,
+      "size": 12778,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/docs/STYLING.md": {
+      "hash": "aa1d28c7cab76519454e1a212b7e554009f65fa7e4863b6b6f74f90f00eece96",
+      "lines": 276,
+      "size": 9427,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/public/file.svg": {
+      "hash": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4",
+      "lines": 0,
+      "size": 391,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/public/globe.svg": {
+      "hash": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf",
+      "lines": 0,
+      "size": 1035,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/public/next.svg": {
+      "hash": "55995dfad6ecb4945a1e856ddca03c5e16aa5bf13fd21b4df6a74ae79357bcfc",
+      "lines": 0,
+      "size": 1375,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/public/vercel.svg": {
+      "hash": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4",
+      "lines": 0,
+      "size": 128,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/public/window.svg": {
+      "hash": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1",
+      "lines": 0,
+      "size": 385,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/src/proxy.ts": {
+      "hash": "d730a31a619ce3b7b7f9495366a00b3d2b2a86decd0971160954b052c53bfd3d",
+      "lines": 27,
+      "size": 771,
+      "mtime": 1780348954997.598
+    },
+    "apps/api/src/app.module.ts": {
+      "hash": "ee6faacabab7789776edd9226b2175e4ac3ea515b2593db1e08137746da1702b",
+      "lines": 15,
+      "size": 414,
+      "mtime": 1779989532138.5007
+    },
+    "apps/api/src/main.ts": {
+      "hash": "93c761a9e179d7a9b698f209aa8f35ee7f4b9922a22c08c61f4117182e90e95f",
+      "lines": 41,
+      "size": 1198,
+      "mtime": 1779907322269.2922
+    },
+    "apps/sender/src/main.ts": {
+      "hash": "5d7ee485e857085bc96c65e76909856213d11e244ae3272efd6aaac3594dce43",
+      "lines": 18,
+      "size": 505,
+      "mtime": 1779904081925.3691
+    },
+    "apps/sender/src/sender.module.ts": {
+      "hash": "565b0f38d2902f4ef0995e6536e71ac0e97b1efe83698dad1b3bd35599a4ac47",
+      "lines": 11,
+      "size": 252,
+      "mtime": 1779821119508.693
+    },
+    "apps/worker/src/main.ts": {
+      "hash": "2294d3fa1998739e26c0fa90dacbe2ccb421182857a37c79ca5dee691fa5b6e5",
+      "lines": 23,
+      "size": 609,
+      "mtime": 1779989532143.5786
+    },
+    "apps/worker/src/scheduler.service.ts": {
+      "hash": "5b01e238d6d5105409a6fc66acfbaf873faba8ac3515b76f7d04deeb14157f18",
+      "lines": 40,
+      "size": 1223,
+      "mtime": 1779989532151.3743
+    },
+    "apps/worker/src/worker.module.ts": {
+      "hash": "6b557161c6053c25bed5848c7d10444593d639c98686cfa6d952f2822e1cb0be",
+      "lines": 42,
+      "size": 1933,
+      "mtime": 1779989532152.379
+    },
+    "packages/config/src/index.ts": {
+      "hash": "c4d041a2965d79323423f49c1265e211b442ef41c97df8b70df069ea2626b498",
+      "lines": 146,
+      "size": 4411,
+      "mtime": 1780351853685.6362
+    },
+    "packages/ai/src/index.ts": {
+      "hash": "f16e02338e5d5244e1acd0cd90f18a8ec4e66604db752814f30a6f7476fdd809",
+      "lines": 5,
+      "size": 227,
+      "mtime": 1779811165793.8906
+    },
+    "packages/db/src/index.ts": {
+      "hash": "857856fdceae0eba37cdf4809d6c31d109893e60adbb035e09b5655e2659f672",
+      "lines": 22,
+      "size": 452,
+      "mtime": 1779989532160.8982
+    },
+    "packages/db/src/seed.ts": {
+      "hash": "dd536e5030cb303de44b86137ad23739c324420c51d9bf69b003c50eefe06d70",
+      "lines": 45,
+      "size": 1194,
+      "mtime": 1779986866490.692
+    },
+    "packages/contracts/src/index.ts": {
+      "hash": "9a8531be4902dfaca68c196a68fec413435c6dd620168f8fa176af0affb50d2c",
+      "lines": 222,
+      "size": 8171,
+      "mtime": 1779989532158.8938
+    },
+    "packages/event-publisher/src/event-publisher.service.ts": {
+      "hash": "bba682bd947a9476e2338ba26369a8787f4f46763b9d05611793ecf738769ebb",
+      "lines": 128,
+      "size": 3916,
+      "mtime": 1779989532167.9187
+    },
+    "packages/event-publisher/src/index.ts": {
+      "hash": "99b3537e37237fce88bed76f5c762ff4d6e0f362488756b1a3422a3623a9f9de",
+      "lines": 22,
+      "size": 1278,
+      "mtime": 1779989532167.9187
+    },
+    "packages/event-publisher/src/webhook-registry.service.ts": {
+      "hash": "bf33e3427dc4be790a84fd33408cb891f8b89bbef17a9fbf764c805a27128f60",
+      "lines": 240,
+      "size": 6996,
+      "mtime": 1779989532169.9246
+    },
+    "packages/logger/src/index.ts": {
+      "hash": "559da1ce8fa128e9f6c62dec028b7705e3e6b51874a057b7fc76046183933bfe",
+      "lines": 25,
+      "size": 530,
+      "mtime": 1779814083776.2742
+    },
+    "packages/queue/src/index.ts": {
+      "hash": "9d670693d22a3df04da91606ed2c39bf1b5d5f62509e7fcf076091b083006415",
+      "lines": 99,
+      "size": 3621,
+      "mtime": 1780348955015.611
+    },
+    "packages/shared/src/index.ts": {
+      "hash": "9d8df3cffc993524a075961540286e3179c91fcec3151bf4bbc44479fb7841f1",
+      "lines": 96,
+      "size": 3907,
+      "mtime": 1779989532171.4343
+    },
+    "packages/storage/src/index.ts": {
+      "hash": "16d7ba6fb2750c91fa9a436e114bf7a631cd5d84575fdb0580e859421f0f2d27",
+      "lines": 1,
+      "size": 36,
+      "mtime": 1779885727450.683
+    },
+    "packages/storage/src/storage.provider.ts": {
+      "hash": "692badf70dc433c37c2d0f6665d1842a7a942e24ac1f45ab75c7330d730d0606",
+      "lines": 101,
+      "size": 3164,
+      "mtime": 1780162810414.2952
+    },
+    "packages/utils/src/date.ts": {
+      "hash": "ef901e4a13b048154cc6df5f8fc2235c8a7c628c3a02af9b4136161861b06f0b",
+      "lines": 69,
+      "size": 1914,
+      "mtime": 1780386015488.4973
+    },
+    "packages/utils/src/formatters.ts": {
+      "hash": "a37e526f25a7ceba8ca884fee9c6710be64373348ba99d876ca8a4702f48ff5c",
+      "lines": 38,
+      "size": 1012,
+      "mtime": 1779903002796.4475
+    },
+    "packages/utils/src/index.ts": {
+      "hash": "4431d700abe3f6498985a45b9abddde13ec30b43dce0a3caa89d5f689d783bb5",
+      "lines": 3,
+      "size": 80,
+      "mtime": 1779902118871.3376
+    },
+    "packages/utils/src/string.ts": {
+      "hash": "816529d1cf1b4b762147b770b17b220a61fd546101359deac7bde09860c72cb5",
+      "lines": 32,
+      "size": 798,
+      "mtime": 1780385550521.837
+    },
+    "apps/dashboard/src/app/favicon.ico": {
+      "hash": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932",
+      "lines": 0,
+      "size": 25931,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/global-error.tsx": {
+      "hash": "f4caa774082823b8e9fb449d84dba7f4dbdfb670b4955d2efc31cee1c3a4c1f8",
+      "lines": 101,
+      "size": 3921,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/globals.css": {
+      "hash": "965f8ef3f293602f766210441dc6fe2632ac37801eea85a65c445755b0f674a9",
+      "lines": 236,
+      "size": 6422,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/layout.tsx": {
+      "hash": "a3e883816c0701b916ee01adf989272e8de6cd52ad366564a2ed58f6b945fd62",
+      "lines": 50,
+      "size": 1225,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/not-found.tsx": {
+      "hash": "34d3b6461676241983cfa5eea551e25b9df5cfb65fe333561eebc4cba1299e25",
+      "lines": 153,
+      "size": 5838,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/page.tsx": {
+      "hash": "832b647cd752da7f0ad0313ca426a04bfd851d972467bb003294a99b4caefde7",
+      "lines": 5,
+      "size": 106,
+      "mtime": 1780348954989.6245
+    },
+    "apps/dashboard/src/app/providers.tsx": {
+      "hash": "c20fcc8f636293cc356ec35ce7caff5ac46bf73d6e9282c999898ae4b0dce648",
+      "lines": 10,
+      "size": 264,
+      "mtime": 1780348954989.6245
+    },
+    "apps/dashboard/src/lib/auth.ts": {
+      "hash": "882938204ddf76a090425bac8bbee5f250246eaba52ec3bfe9ca41f3c1ff0f07",
+      "lines": 60,
+      "size": 1568,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/lib/media-url.ts": {
+      "hash": "b42642a656e25331ff529fdfa0d03834e2f23ea4fd726d76367f725f2160d99f",
+      "lines": 81,
+      "size": 2525,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/lib/utils.ts": {
+      "hash": "d1f1e0d62cb8d8d1e04c26e14de842d8a151f75812d81b046c65b5d1fe8e4b27",
+      "lines": 6,
+      "size": 169,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/components/theme-toggle.tsx": {
+      "hash": "c0f6080329be7487db7aeb6db301d956c7272917ca6fcd2ead8845537181a35f",
+      "lines": 23,
+      "size": 767,
+      "mtime": 1780348954989.6245
+    },
+    "apps/worker/src/processors/ai-extraction.processor.ts": {
+      "hash": "4c9e1c2855b5217468ce978698bdbad68f5c3da3400d0f2129bcd88070e5a437",
+      "lines": 782,
+      "size": 25583,
+      "mtime": 1780386375031.3313
+    },
+    "apps/worker/src/processors/base.processor.ts": {
+      "hash": "0e39667aa57b2eb4ac32ae2aed4d569c588d55484db658a4843973b9c6f6eddb",
+      "lines": 74,
+      "size": 2057,
+      "mtime": 1779975325069.0757
+    },
+    "apps/worker/src/processors/budget-check.processor.ts": {
+      "hash": "4ee2db575fb43e4ad31594476e2c6106602dae180f19efb3f234fac8018eecf8",
+      "lines": 158,
+      "size": 4708,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/budget-command.processor.ts": {
+      "hash": "b4340e5d3157bb05992b08f58a247fb795a92fec199a8f872844fbf7357ffa79",
+      "lines": 336,
+      "size": 10118,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/budget-rollover.processor.ts": {
+      "hash": "42098360eff1df03d12ba428d1d7481aae16b50bfd87f75a976129f8caf29064",
+      "lines": 106,
+      "size": 3025,
+      "mtime": 1780164095509.9307
+    },
+    "apps/worker/src/processors/confirmation.processor.ts": {
+      "hash": "999767a9d68a11ecae8d4295a03604c93b1b56f3feac971aba28c5cd7dd0cd76",
+      "lines": 238,
+      "size": 7634,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/custom-command.processor.ts": {
+      "hash": "8e8a687f73f470af28aa896af0e7989e95b16daa93f83e2ef0dd9b3f37458b22",
+      "lines": 519,
+      "size": 15728,
+      "mtime": 1780386415633.2834
+    },
+    "apps/worker/src/processors/event-publishing.processor.ts": {
+      "hash": "af673af8e228b55026a7b0be6d27011832e18dba777d02c57d4d1b06944c79d0",
+      "lines": 123,
+      "size": 3619,
+      "mtime": 1779989532147.8596
+    },
+    "apps/worker/src/processors/image-ocr.processor.ts": {
+      "hash": "00c91f74c6d36d366c335f756a32182d352fe349137156d52068d08df4b732be",
+      "lines": 289,
+      "size": 9329,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/messsage.processor.ts": {
+      "hash": "a3dcbe095edd5341259e01cad86a39480ee8a542b8264232a18b44e3a28fa8ea",
+      "lines": 250,
+      "size": 8123,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/monthly-report.processor.ts": {
+      "hash": "ebb226874d1adf0884d31673f964de30bf2d1be5d24cdf8218b9e2df0922a6b4",
+      "lines": 328,
+      "size": 9466,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/recurring-reminder.processor.ts": {
+      "hash": "cb6100b18142cae0361ea8fb73e2c88b53b9a26296f88fea439432924b4100b1",
+      "lines": 130,
+      "size": 3882,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/recurring-setup.processor.ts": {
+      "hash": "2611e0b770c90bd688f67508107ae7f2f6d65d214c91888335262b15e2adca43",
+      "lines": 234,
+      "size": 8573,
+      "mtime": 1780348954997.991
+    },
+    "apps/worker/src/processors/report.processor.ts": {
+      "hash": "7ad15a6a409fec756f7ac911a36eeffa1afffba2dcde00d5f18813496410ddd4",
+      "lines": 797,
+      "size": 24247,
+      "mtime": 1780348955003.7544
+    },
+    "apps/worker/src/processors/settings-command.processor.ts": {
+      "hash": "dca46abca96b920a79750e761c3c05f864432d6cc99cda6cbc32e6997319e850",
+      "lines": 341,
+      "size": 10304,
+      "mtime": 1780348955003.7544
+    },
+    "apps/worker/src/processors/transaction-command.processor.ts": {
+      "hash": "ee503406e0a9e397614c1acb12364a216e3725482c19295720cce271792e8733",
+      "lines": 581,
+      "size": 18332,
+      "mtime": 1780348955003.7544
+    },
+    "apps/worker/src/processors/voice-transcription.processor.ts": {
+      "hash": "ffcbc3888fe3def4b790a7919e7a259e86423d6aa194ef6bb6ef588a18c4e0a7",
+      "lines": 214,
+      "size": 7235,
+      "mtime": 1780348955006.2942
+    },
+    "packages/ai/src/guardrails/finance-guardrail.ts": {
+      "hash": "573627c41b5cc5222149b6497223ae6c81749d8f7b68ca632994c099326375cc",
+      "lines": 285,
+      "size": 10438,
+      "mtime": 1780348955007.301
+    },
+    "packages/ai/src/interfaces/index.ts": {
+      "hash": "47fa38569c8b393841ab0673914e5df5227624f231a3170073e0be1f7b38e467",
+      "lines": 52,
+      "size": 1657,
+      "mtime": 1780386121500.199
+    },
+    "packages/ai/src/providers/gemini-vision.provider.ts": {
+      "hash": "9efbab1729e4f87e82a6b07f38e3234b92addefe744c8f9ba541874de8a59cfe",
+      "lines": 129,
+      "size": 4242,
+      "mtime": 1780348955007.301
+    },
+    "packages/ai/src/providers/groq-whisper.provider.ts": {
+      "hash": "3c2fc0d6f1de406f399c43b542f2a55cfdbabf557154ab5a196034cf24b16073",
+      "lines": 170,
+      "size": 3642,
+      "mtime": 1780348955007.301
+    },
+    "packages/ai/src/providers/sumopod.provider.ts": {
+      "hash": "374f94f2e70b721892453b644b841fed8ece7460fa0dec005edcf2aa3e1a492d",
+      "lines": 369,
+      "size": 13989,
+      "mtime": 1780386157317.462
+    },
+    "packages/db/src/schema/ai-processing-logs.ts": {
+      "hash": "d1a16dd9944e1be99462456844bdc108bb103e9d160ab82837a3d4556d8707c2",
+      "lines": 42,
+      "size": 1451,
+      "mtime": 1779986833635.4644
+    },
+    "packages/db/src/schema/budgets.ts": {
+      "hash": "1800173780ebc91186d94c30cfe5863738e6bffd5ca9dfa2410e8e6d0146adca",
+      "lines": 55,
+      "size": 1567,
+      "mtime": 1779989532160.8982
+    },
+    "packages/db/src/schema/enums.ts": {
+      "hash": "00389d5e4d4e2314476a209cce5650b99aaeb057ba90715dbd4a9a0ac5707a3d",
+      "lines": 55,
+      "size": 1077,
+      "mtime": 1779849833482.9878
+    },
+    "packages/db/src/schema/index.ts": {
+      "hash": "4f76629cb92871a4ce16f1a226c266c443326de8c4f95c03d2f50392afd6b7ba",
+      "lines": 465,
+      "size": 9244,
+      "mtime": 1780348955007.301
+    },
+    "packages/db/src/schema/payment-methods.ts": {
+      "hash": "5fc2c067cda42f2a821d1eacbb5bb107b8d843335152c0d52df76a2973bcc67a",
+      "lines": 36,
+      "size": 1056,
+      "mtime": 1779989532161.9053
+    },
+    "packages/db/src/schema/raw-ai-outputs.ts": {
+      "hash": "10c3d5fc1f61a2fddc6fd9a467d5e5760690964703535ce9d4048927bc2ac52b",
+      "lines": 44,
+      "size": 1432,
+      "mtime": 1779989532162.9036
+    },
+    "packages/db/src/schema/raw-messages.ts": {
+      "hash": "57aa4182bbccf7d06456d0000bdf0912d8c2792368c03ef5f78f51e98cb667b2",
+      "lines": 51,
+      "size": 1743,
+      "mtime": 1779903379521.195
+    },
+    "packages/db/src/schema/recurring-bills.ts": {
+      "hash": "7236d5b7af40a626045d6b18bc1f7888d18624e595552853b1bf803d34bd4303",
+      "lines": 62,
+      "size": 2023,
+      "mtime": 1779989532162.9036
+    },
+    "packages/db/src/schema/relations.ts": {
+      "hash": "ca2139e20cbf32ba53811291df8e221cf240528188150861cfb2102eaf62060c",
+      "lines": 100,
+      "size": 3017,
+      "mtime": 1780348955007.301
+    },
+    "packages/db/src/schema/reports.ts": {
+      "hash": "a26937d516da44008385f48210356aa37782c4f8d0de8384449fe320eb39934d",
+      "lines": 67,
+      "size": 1850,
+      "mtime": 1779989532163.9036
+    },
+    "packages/db/src/schema/sessions.ts": {
+      "hash": "03abc31e3407435c59977c1e4da12f07ea2639392aad8c647fc27eb30a3b5ffc",
+      "lines": 37,
+      "size": 1181,
+      "mtime": 1780348955007.301
+    },
+    "packages/db/src/schema/transaction-categories.ts": {
+      "hash": "2285e82e34bdee8156cea59dbc8eca150863c44590089354bc3abdb6d4207eae",
+      "lines": 42,
+      "size": 1430,
+      "mtime": 1779989532163.9036
+    },
+    "packages/db/src/schema/transaction-tag-mappings.ts": {
+      "hash": "8d72b32d1db235d70210d51da07ee08127e5b6453b46e13040e0c6c26cbc7a9b",
+      "lines": 39,
+      "size": 1176,
+      "mtime": 1779986846823.1008
+    },
+    "packages/db/src/schema/transaction-tags.ts": {
+      "hash": "11591b925756d2d067e0e5cd77d7b66e86f29faeebdca669e1381884a4e92d7e",
+      "lines": 33,
+      "size": 894,
+      "mtime": 1779989532164.9036
+    },
+    "packages/db/src/schema/transactions.ts": {
+      "hash": "1af0f097108a0f5f41e3d89023c7dd6d80e5cc254a57518584a88223bdf9bb34",
+      "lines": 96,
+      "size": 3773,
+      "mtime": 1780348955007.301
+    },
+    "packages/db/src/schema/users.ts": {
+      "hash": "925273acd375c16f396b5f1db768b00a827ab17c3e6fc77624cb08c049743bf0",
+      "lines": 36,
+      "size": 1042,
+      "mtime": 1779989532165.912
+    },
+    "packages/db/src/schema/webhook-subscriptions.ts": {
+      "hash": "1667d8ac8b9ef016a5e3e2237742fbfc9ee3c79686992c637342ab1100b57d79",
+      "lines": 90,
+      "size": 3042,
+      "mtime": 1779989532165.912
+    },
+    "packages/event-publisher/src/contracts/financial-event.constants.ts": {
+      "hash": "f7598f2f986cca2531a0755c9a9966c15ed3334f4f74962c7b9e6961323befe7",
+      "lines": 44,
+      "size": 1799,
+      "mtime": 1779989532166.917
+    },
+    "packages/event-publisher/src/contracts/financial-event.ts": {
+      "hash": "efd59f997e4a1fb8ef4594744ba991761b7904e390b522131f3ef3b50ad0412e",
+      "lines": 17,
+      "size": 442,
+      "mtime": 1779989532167.9187
+    },
+    "packages/event-publisher/src/transports/noop.transport.ts": {
+      "hash": "caf4ef74d54b64a9de890183bb4822f4a3c7c6b769b08bc7f0d8e01bf13993c0",
+      "lines": 28,
+      "size": 869,
+      "mtime": 1779989532168.924
+    },
+    "packages/event-publisher/src/transports/webhook.transport.ts": {
+      "hash": "f75ad7a30dd5cddc6bd47391e8912e24a2ce010cbcd7936e0effd3befcd48dd7",
+      "lines": 117,
+      "size": 3406,
+      "mtime": 1779989532168.924
+    },
+    "apps/dashboard/src/app/dashboard/error.tsx": {
+      "hash": "d716e780b2e88d1f0efec58346013cf50979350d3c229e0ef8ace22b1c52f11d",
+      "lines": 138,
+      "size": 4973,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/dashboard/layout.tsx": {
+      "hash": "129bee824ea08ea7b03300443f61ddbcaaffc4abd4a658418e3c9d3b8a705e5c",
+      "lines": 255,
+      "size": 8097,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/loading.tsx": {
+      "hash": "b391d8253ee48257e1ac690e3c73ce9cc8e58f5f0a31a375be36fabeba5a2293",
+      "lines": 120,
+      "size": 4658,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/page.tsx": {
+      "hash": "3776cc3b3bb8e429708922129adc4c55283a2e90d1b9b45f3c721b7b897ac704",
+      "lines": 710,
+      "size": 28150,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/components/ui/alert-dialog.tsx": {
+      "hash": "9db61b63ad29e74a4a4d9066499554457ebb0c9ed880c4003006bd5de2bb0169",
+      "lines": 187,
+      "size": 5298,
+      "mtime": 1780348954989.6245
+    },
+    "apps/dashboard/src/components/ui/badge.tsx": {
+      "hash": "2f6e9755f81348218ed9385d4d8b93ceb95fdb91dc50c24fbc6604111ca0e109",
+      "lines": 52,
+      "size": 1934,
+      "mtime": 1780348954991.132
+    },
+    "apps/dashboard/src/components/ui/button.tsx": {
+      "hash": "1e898bbe51e0df079306bf79db8c121bfede5ffe51193e1e49670f73152ccfbc",
+      "lines": 58,
+      "size": 3247,
+      "mtime": 1780348954991.132
+    },
+    "apps/dashboard/src/components/ui/card.tsx": {
+      "hash": "ca6994358e88bef88aa6728e8b98ebe005228b6f2af9814a2061ce3ad80ff5b6",
+      "lines": 103,
+      "size": 2656,
+      "mtime": 1780348954991.132
+    },
+    "apps/dashboard/src/components/ui/checkbox.tsx": {
+      "hash": "95c17387832b0527f5cd54623212c8494aeb248891c41207f7163a82b336cbc4",
+      "lines": 28,
+      "size": 1356,
+      "mtime": 1780348954991.132
+    },
+    "apps/dashboard/src/components/ui/dialog.tsx": {
+      "hash": "c1a06f02c8b03cdcd3cc98fddf1a9c624b576fea0bfc5f59f8b0629a4bdc5f22",
+      "lines": 159,
+      "size": 4087,
+      "mtime": 1780348954991.132
+    },
+    "apps/dashboard/src/components/ui/dropdown-menu.tsx": {
+      "hash": "c4cb14df2e68859cd6be7c1f2826d85ed079d06e63901c9e3ca17604f397ff91",
+      "lines": 272,
+      "size": 8809,
+      "mtime": 1780348954993.1465
+    },
+    "apps/dashboard/src/components/ui/input.tsx": {
+      "hash": "064c589290aa236d5e7e7f32c8745a273c7c00cbb12b4966cf96e29e9a81a2ef",
+      "lines": 20,
+      "size": 1046,
+      "mtime": 1780348954993.1465
+    },
+    "apps/dashboard/src/components/ui/label.tsx": {
+      "hash": "eebf6f3ad4de87489da1ca9d0f24a8aaf4d77a94f362db130721531e568600f7",
+      "lines": 20,
+      "size": 524,
+      "mtime": 1780348954993.1465
+    },
+    "apps/dashboard/src/components/ui/select.tsx": {
+      "hash": "3f4a5fe25c0323094aa816644c45687cc08410c450a05bb64e0f9a012165cc5d",
+      "lines": 245,
+      "size": 7603,
+      "mtime": 1780348954993.1465
+    },
+    "apps/dashboard/src/components/ui/separator.tsx": {
+      "hash": "908808b39ed38a1724c656412cfbb270617b0ef628b87dcd9ace669e018a6a9b",
+      "lines": 25,
+      "size": 551,
+      "mtime": 1780348954993.1465
+    },
+    "apps/dashboard/src/components/ui/skeleton.tsx": {
+      "hash": "485c6867daf193a560bc4a0c5f8eea424cb823b7eddff0e6f7768ffe79eb552b",
+      "lines": 13,
+      "size": 278,
+      "mtime": 1780348954994.651
+    },
+    "apps/dashboard/src/components/ui/sonner.tsx": {
+      "hash": "e5a4353ae37d33324fb0be0970fbefb7178c01d73fc7b010c3efcb6db80758e3",
+      "lines": 45,
+      "size": 1135,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/components/ui/table.tsx": {
+      "hash": "899b9f87df51593b250e93f1c5176f630a7c1210ab7a2df5172ad77d9bf25bee",
+      "lines": 116,
+      "size": 2418,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/components/ui/tabs.tsx": {
+      "hash": "b6cd199667e1a89b06d662949619c4023cd3437a5df1a002ec89442dd1311977",
+      "lines": 82,
+      "size": 3510,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/components/ui/textarea.tsx": {
+      "hash": "276a7fca0a431b7af5ea9c9ddca0de298f7c303bd1f8bdf330f1414ef981d3f7",
+      "lines": 18,
+      "size": 847,
+      "mtime": 1780348954995.1619
+    },
+    "apps/dashboard/src/components/ui/tooltip.tsx": {
+      "hash": "d17b1fc277d83f8262fc0df62ed619b519ff127242ec678f09de6ddde1a44f74",
+      "lines": 66,
+      "size": 2855,
+      "mtime": 1780348954995.1619
+    },
+    "apps/api/src/common/guards/owner.guard.ts": {
+      "hash": "1190364e2243190e81a33eecf116e64d3729b7db3beaafcf91a3c13c519b91f2",
+      "lines": 87,
+      "size": 2788,
+      "mtime": 1779989532140.0298
+    },
+    "apps/api/src/common/guards/webhook-signature.guard.ts": {
+      "hash": "726cef7ce02af9df22e3e7d34a4c302fbd34f3eeb17a76a644392a02bec8c8f2",
+      "lines": 60,
+      "size": 1749,
+      "mtime": 1779986912085.3252
+    },
+    "apps/api/src/modules/auth/auth.module.ts": {
+      "hash": "fccb9f1e93dd935fad74df9f1f5f3235cf66c2255d710036bda7fecd711d62a9",
+      "lines": 8,
+      "size": 195,
+      "mtime": 1780385340608.0745
+    },
+    "apps/api/src/modules/auth/auth.service.ts": {
+      "hash": "681bf3b53a99846911848586bfbb894330f33df2f4adb95e806b784d6802a9e3",
+      "lines": 81,
+      "size": 2513,
+      "mtime": 1780385454169.4758
+    },
+    "apps/api/src/modules/webhook/waha-payload.dto.ts": {
+      "hash": "8fd4cbf63823fff193028f9be4237f1c63f67c65d83a01b24d665b6fc365bce4",
+      "lines": 107,
+      "size": 2305,
+      "mtime": 1779989532140.5732
+    },
+    "apps/api/src/modules/webhook/webhook.controller.ts": {
+      "hash": "40a3e62d260a9fa02ef30d38d9bc429caf2f309b58dc67842dee48fb445cc3e2",
+      "lines": 50,
+      "size": 1298,
+      "mtime": 1780348954963.17
+    },
+    "apps/api/src/modules/webhook/webhook.module.ts": {
+      "hash": "567e2f51e68b226ec905deab1dd62faf2d030b22cca5a1d0ce9c89e1395b917f",
+      "lines": 12,
+      "size": 391,
+      "mtime": 1780385348699.4087
+    },
+    "apps/api/src/modules/webhook/webhook.service.ts": {
+      "hash": "aaa7c936d364981f9dc64443dbe72b83a47750f80bf2d346ff6d4d7242ba7370",
+      "lines": 453,
+      "size": 15307,
+      "mtime": 1780386278701.0742
+    },
+    "apps/api/src/modules/database/database.module.ts": {
+      "hash": "c58354f3ccf62858b2629ec79e8a8e85c77ff04063616e2ea957d4fdb4312506",
+      "lines": 24,
+      "size": 578,
+      "mtime": 1779989532140.0298
+    },
+    "apps/sender/src/modules/wa-send/wa-send.module.ts": {
+      "hash": "4daea2efe764ca6f52e192c3a7eb3ded649579875318d484681285f9017605b1",
+      "lines": 9,
+      "size": 297,
+      "mtime": 1779896451249.3262
+    },
+    "apps/sender/src/modules/wa-send/wa-send.processor.ts": {
+      "hash": "b84ad5b075e8191ee5bf730b34b520acc27c53180e57ae5341afed092fe4cdd3",
+      "lines": 118,
+      "size": 3617,
+      "mtime": 1779989532142.5786
+    },
+    "apps/sender/src/modules/wa-send/wa-send.service.ts": {
+      "hash": "e8ede5da0e46c6d7ce4531d17b053820d6c1b24c79c9fd879dacaf721b73abee",
+      "lines": 193,
+      "size": 5296,
+      "mtime": 1779989532143.5786
+    },
+    "apps/dashboard/src/app/(auth)/login/page.tsx": {
+      "hash": "447fe5ba847d4a7f41ec3f7c70c0bd1df97eb79dcea218a8c6c03c38a8c1ece1",
+      "lines": 215,
+      "size": 8845,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/src/app/api/budgets/route.ts": {
+      "hash": "7ed98e3deef5a51c1b77efa11ad5f330849de0abb5c17f26f2e32bdda08a924a",
+      "lines": 109,
+      "size": 3256,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/categories/route.ts": {
+      "hash": "209c8f8167bfab3208d5c1569e966a01e0ad0e02470b58e2eda80653711ac4f2",
+      "lines": 87,
+      "size": 2282,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/insights/route.ts": {
+      "hash": "8ab9e80f15977fc1e15ae195f2ec8c1af7ea693d08d43495a9f979976f25840f",
+      "lines": 225,
+      "size": 8507,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/media/route.ts": {
+      "hash": "be6146fbd4bb8e09f28dd4484f9e6085244dd89143ffece89d7642ebf9c04eab",
+      "lines": 108,
+      "size": 3366,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/payment-methods/route.ts": {
+      "hash": "900f73eefddacfd0af66008e1878adeb0c55383ce86bd216f6017eb484157ca8",
+      "lines": 73,
+      "size": 2009,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/recurring-bills/route.ts": {
+      "hash": "0a66896803269713e3374969d55af9418f5b7dff87c30ea0f7238e7c5971d1e1",
+      "lines": 78,
+      "size": 2006,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/sessions/route.ts": {
+      "hash": "f2f71b12cb535c8e9b2f1093f738de32346e0276acb6858448f394707bb91eba",
+      "lines": 110,
+      "size": 3029,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/settings/route.ts": {
+      "hash": "4b3a9424fe1b5fb96c1d85ed2440c8e561eb517bc17bcba23acbf3a0080b81cf",
+      "lines": 130,
+      "size": 3778,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/stats/route.ts": {
+      "hash": "e957a3285f9f8880945be509d17acedf570c03b43f5b6336d422c2674960c6c1",
+      "lines": 119,
+      "size": 4183,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/tags/route.ts": {
+      "hash": "a5567e97dbba46af477c40d4940b356ac766ebb7c0393e479dd4e873ba7e9d63",
+      "lines": 47,
+      "size": 1355,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/api/transactions/route.ts": {
+      "hash": "6af7e7acc003fa288804698f73fa78a583c99f1c68d4dce1dd279458c76f4873",
+      "lines": 180,
+      "size": 5024,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/dashboard/budgets/page.tsx": {
+      "hash": "c1a719d001f1584a72ec39f845fac2f4b77064f6c2a730f8572e3c401657d153",
+      "lines": 421,
+      "size": 13944,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/dashboard/insights/page.tsx": {
+      "hash": "66fe5e16f6ba5fe94f67708105f98794ef266687a702d0e9c85a68d895308f11",
+      "lines": 552,
+      "size": 21843,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/payment-methods/page.tsx": {
+      "hash": "40b6a48e5040c19364078c06b56e1f83ef17f73d9966ee87e4c574e9e019642f",
+      "lines": 264,
+      "size": 8595,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/categories/page.tsx": {
+      "hash": "d28e178b03a9adeb2d93d73d5ee2b44698ef950a5fbdc36a83c80f41155b68e2",
+      "lines": 300,
+      "size": 9092,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/dashboard/recurring-bills/page.tsx": {
+      "hash": "51725ef280205b80a292ca2cf307dfa69b56d287e5b42004c1ded10f0707ad16",
+      "lines": 428,
+      "size": 15124,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/settings/page.tsx": {
+      "hash": "758a41d20f8bc296b29320196052936772659b9b73f616e675dbb1dcc7596a51",
+      "lines": 652,
+      "size": 20838,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/tags/page.tsx": {
+      "hash": "a602a136467bcdf08d04a1da8366ace927952db3db6da1d6ffa2d85b83cb68b0",
+      "lines": 184,
+      "size": 5712,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/system/page.tsx": {
+      "hash": "e1e6d4762605875c46d0e527d58446162cb1ed77a904d02e06d3eed647b78221",
+      "lines": 1068,
+      "size": 39683,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/transactions/page.tsx": {
+      "hash": "a66be6171c26324b52650834f1599938eab71c87e1eb665832610dc817819978",
+      "lines": 452,
+      "size": 14031,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/api/auth/logout/route.ts": {
+      "hash": "ff2dcbeafffdc2ae114bdb7ebb06c44eb4cf529aade3700c65b18497a7420e6d",
+      "lines": 9,
+      "size": 295,
+      "mtime": 1780348954966.251
+    },
+    "apps/dashboard/src/app/api/auth/verify/route.ts": {
+      "hash": "03af89fc9e80dbede5459318c48620dbc7caa1ef8751a0408db7121b16562624",
+      "lines": 68,
+      "size": 1940,
+      "mtime": 1780385375164.48
+    },
+    "apps/dashboard/src/app/api/transactions/[id]/route.ts": {
+      "hash": "6cbbaad0d2b23ac8b0360b2f426ce9f8f603fccd99c42f6d5226eea0b3522545",
+      "lines": 162,
+      "size": 4791,
+      "mtime": 1780348954974.0366
+    },
+    "apps/dashboard/src/app/dashboard/transactions/new/page.tsx": {
+      "hash": "c752e87d8cd7cf0a183843b86fc1d86c36724d16f10ded3105141bee8655b75f",
+      "lines": 5,
+      "size": 142,
+      "mtime": 1780348954981.2568
+    },
+    "apps/dashboard/src/app/dashboard/transactions/[id]/edit/page.tsx": {
+      "hash": "5e43c565ff8e273ec69aca7b7d4b346f49b1540f580d3f2569507177a69e826c",
+      "lines": 418,
+      "size": 13664,
+      "mtime": 1780348954981.2568
+    }
+  }
+}

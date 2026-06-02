@@ -24,5 +24,9 @@ export function sanitizeString(str: string): string {
 export function extractPhone(waId: string): string {
   // "628xxxxxxxxxx@c.us" > "628xxxxxxxxxx"
   // "247622363250777@lid" > "247622363250777"
-  return waId.replace("@c.us", "").replace("@g.us", "").replace("@lid", "");
+  return waId
+    .replace("@c.us", "")
+    .replace("@g.us", "")
+    .replace("@lid", "")
+    .replace("@s.whatsapp.net", "");
 }

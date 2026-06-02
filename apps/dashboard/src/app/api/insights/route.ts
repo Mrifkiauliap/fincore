@@ -1,14 +1,20 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getDb, transactions } from "@fincore/db";
 import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
+    const tz = user.timezone ?? undefined;
 
     const range = searchParams.get("range") || "30d";
     const rangeDays: Record<string, number> = {
@@ -19,7 +25,11 @@ export async function GET(request: NextRequest) {
       "365d": 365,
     };
     const days = rangeDays[range] || 30;
-    const rangeStart = dayjs().subtract(days, "day").startOf("day").toDate();
+    const rangeStart = dayjs()
+      .tz(tz)
+      .subtract(days, "day")
+      .startOf("day")
+      .toDate();
 
     const baseConditions = [
       eq(transactions.userId, user.id),
@@ -76,7 +86,11 @@ export async function GET(request: NextRequest) {
       .where(and(...rangeConditions));
 
     // === Weekly trend (last 4 weeks) ===
-    const fourWeeksAgo = dayjs().subtract(4, "week").startOf("week").toDate();
+    const fourWeeksAgo = dayjs()
+      .tz(tz)
+      .subtract(4, "week")
+      .startOf("week")
+      .toDate();
     const weeklyTrend = await db
       .select({
         week: sql<string>`TO_CHAR(DATE_TRUNC('week', ${transactions.transactionDate}), 'YYYY-MM-DD')`,
@@ -113,7 +127,7 @@ export async function GET(request: NextRequest) {
           eq(transactions.type, "expense"),
           gte(
             transactions.transactionDate,
-            dayjs().subtract(90, "day").toDate(),
+            dayjs().tz(tz).subtract(90, "day").toDate(),
           ),
         ),
       )

@@ -1,13 +1,20 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getDb, transactions } from "@fincore/db";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
+    const tz = user.timezone ?? undefined;
 
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
@@ -60,8 +67,11 @@ export async function GET(request: NextRequest) {
       .orderBy(sql`SUM(${transactions.amount}) DESC`);
 
     // Monthly trend (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsAgo = dayjs()
+      .tz(tz)
+      .subtract(6, "month")
+      .startOf("month")
+      .toDate();
 
     const monthlyTrend = await db
       .select({

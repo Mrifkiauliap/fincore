@@ -1,18 +1,24 @@
 import { getCurrentUser } from "@/lib/auth";
 import { budgets, getDb, transactions } from "@fincore/db";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, asc, eq, sql, sum } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
-    const year = parseInt(
-      searchParams.get("year") || String(new Date().getFullYear()),
-    );
+    const tz = user.timezone ?? undefined;
+    const now = dayjs().tz(tz);
+    const year = parseInt(searchParams.get("year") || String(now.year()));
     const month = parseInt(
-      searchParams.get("month") || String(new Date().getMonth() + 1),
+      searchParams.get("month") || String(now.month() + 1),
     );
 
     const allBudgets = await db.query.budgets.findMany({
@@ -29,8 +35,18 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate actual spending per budget
-    const startOfMonth = new Date(year, month - 1, 1);
-    const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+    const startOfMonth = dayjs()
+      .tz(tz)
+      .year(year)
+      .month(month - 1)
+      .startOf("month")
+      .toDate();
+    const endOfMonth = dayjs()
+      .tz(tz)
+      .year(year)
+      .month(month - 1)
+      .endOf("month")
+      .toDate();
 
     const budgetWithUsage = await Promise.all(
       allBudgets.map(async (budget) => {

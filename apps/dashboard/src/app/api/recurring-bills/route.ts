@@ -1,7 +1,14 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getDb, recurringBills } from "@fincore/db";
+import { DEFAULT_TIMEZONE } from "@fincore/utils";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { asc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function GET() {
   try {
@@ -32,6 +39,7 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser();
     const db = getDb();
     const body = await request.json();
+    const tz = user.timezone ?? DEFAULT_TIMEZONE;
 
     const {
       name,
@@ -62,7 +70,7 @@ export async function POST(request: NextRequest) {
         paymentMethodId: paymentMethodId || null,
         categoryId: categoryId || null,
         notes: notes || null,
-        nextReminderAt: new Date(nextReminderAt),
+        nextReminderAt: dayjs(nextReminderAt).tz(tz).toDate(),
         isActive: true,
       })
       .returning();
