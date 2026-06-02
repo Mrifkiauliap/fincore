@@ -6,7 +6,7 @@ import { z } from "zod";
 /**
  * Only load .env from filesystem in development.
  * In production/Docker, env vars are injected by the orchestrator
- * (docker-compose, k8s, etc.) — we must NOT override them with stale
+ * (docker-compose, k8s, etc.) -we must NOT override them with stale
  * .env files that may have been bundled into the Next.js standalone artifact.
  */
 function loadEnv() {
