@@ -18,7 +18,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const rangeOptions = [
   { key: "7d", label: "7 Hari" },
@@ -71,11 +71,7 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("30d");
 
-  useEffect(() => {
-    fetchInsights();
-  }, [range]);
-
-  const fetchInsights = async () => {
+  const fetchInsights = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/insights?range=${range}`);
@@ -86,7 +82,11 @@ export default function InsightsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [range]);
+
+  useEffect(() => {
+    fetchInsights();
+  }, [fetchInsights]);
 
   const maxDaily = data
     ? Math.max(...data.dailySpending.map((d) => d.total), 1)
@@ -104,9 +104,8 @@ export default function InsightsPage() {
       : 0;
 
   // Sort dayOfWeek by dowNum
-  const sortedDays = data?.dayOfWeekSpending
-    ? [...data.dayOfWeekSpending].sort((a, b) => a.dowNum - b.dowNum)
-    : [];
+  const sortedDays =
+    data?.dayOfWeekSpending?.toSorted((a, b) => a.dowNum - b.dowNum) ?? [];
 
   const maxDow =
     sortedDays.length > 0 ? Math.max(...sortedDays.map((d) => d.total), 1) : 1;
@@ -133,6 +132,7 @@ export default function InsightsPage() {
         <div className="flex rounded-lg border bg-muted/30 p-0.5">
           {rangeOptions.map((opt) => (
             <button
+              type="button"
               key={opt.key}
               onClick={() => setRange(opt.key)}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
@@ -168,11 +168,11 @@ export default function InsightsPage() {
         <>
           {/* AI Insight Cards */}
           <div className="grid gap-3">
-            {data.insights.map((insight, i) => {
+            {data.insights.map((insight) => {
               const type = getInsightIcon(insight);
               return (
                 <div
-                  key={i}
+                  key={insight}
                   className={`flex items-start gap-3 rounded-xl border p-4 ${
                     type === "success"
                       ? "border-emerald-500/30 bg-emerald-500/5"

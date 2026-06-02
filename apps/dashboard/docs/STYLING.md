@@ -262,6 +262,19 @@ const colors = [
 | [`loading.tsx`](apps/dashboard/src/app/dashboard/loading.tsx) | Skeleton loading dashboard                   |
 | [`global-error.tsx`](apps/dashboard/src/app/global-error.tsx) | Root error boundary (critical failure)       |
 
+### Verify Page (Magic Link Auto-Submit)
+
+[`verify/route.ts`](apps/dashboard/src/app/api/auth/verify/route.ts) — GET handler returns inline HTML untuk halaman verifikasi magic link. HTML ini mengikuti sistem desain FinCore:
+
+- **Color system**: CSS variables `oklch(...)` matching light/dark theme dari `globals.css`
+- **`prefers-color-scheme`**: Auto dark mode via `@media (prefers-color-scheme: dark)` — tidak perlu JS
+- **Background grid**: `linear-gradient` grid pattern + `radial-gradient` mask (sama seperti login page)
+- **Glow orbs**: 3 orb dekoratif (`orb--top-left`, `orb--bottom-right`, `orb--center`) dengan animasi `fadeIn`
+- **Glass card**: `backdrop-filter: blur(20px)`, background semi-transparent, shadow depth
+- **FinCore branding**: Logo SVG TrendingUp + "FinCore" di emerald, secure badge di footer
+- **POST-on-load**: `body onload="document.getElementById('verify-form').submit()"` — mencegah CSRF, prefetch, dan WhatsApp link-preview
+- **Noscript fallback**: Tombol manual "Masuk ke Dashboard" dengan icon arrow
+
 ---
 
 ## Icons (Lucide React)

@@ -1,25 +1,39 @@
+import getConfig from "@fincore/config";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export function proxy(request: NextRequest) {
   const session = request.cookies.get("fincore_session");
+  const dashboardUrl = getConfig("DASHBOARD_URL");
 
-  // Lindungi rute /dashboard
-  if (request.nextUrl.pathname.startsWith("/dashboard")) {
-    if (!session) {
-      // Redirect ke login jika belum ada sesi
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+  // Create base response
+  let response = NextResponse.next();
+
+  const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard");
+  const isLoginRoute = request.nextUrl.pathname === "/login";
+
+  if (isDashboardRoute && !session) {
+    return NextResponse.redirect(`${dashboardUrl}/login`);
   }
 
-  // Jika sudah login, jangan boleh buka halaman /login lagi (redirect ke dashboard)
-  if (request.nextUrl.pathname === "/login") {
-    if (session) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
+  if (isLoginRoute && session) {
+    response = NextResponse.redirect(`${dashboardUrl}/dashboard`);
   }
 
-  return NextResponse.next();
+  // Sliding Session: Perpanjang cookie 7 hari tiap request
+  if (session) {
+    response.cookies.set({
+      name: "fincore_session",
+      value: session.value,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 hari
+    });
+  }
+
+  return response;
 }
 
 export const config = {

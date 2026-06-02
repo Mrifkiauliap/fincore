@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  Hash,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -24,7 +25,6 @@ import {
   Terminal,
   TrendingUp,
   Wallet,
-  Hash,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="flex-1" />
         <nav className="flex items-center gap-1">
           <Link
-            href="/api/auth/logout"
+            href="/logout"
             className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all h-7 hover:bg-muted hover:text-foreground px-2.5"
           >
             <LogOut className="size-3.5" />
@@ -237,7 +237,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </nav>
               <Separator className="my-4" />
               <Link
-                href="/api/auth/logout"
+                href="/logout"
                 className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all h-7 hover:bg-muted hover:text-foreground px-2.5 w-full text-destructive"
               >
                 <LogOut className="size-3.5" />

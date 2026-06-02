@@ -31,7 +31,20 @@ export const getCurrentUser = cache(async (): Promise<User> => {
     new Date() > sessionRecord.expiresAt
   ) {
     // Redirect to logout to clear the invalid cookie
-    redirect("/api/auth/logout");
+    redirect("/logout");
+  }
+
+  // Sliding Session: Perpanjang di database jika sisa umur sesi < 3 hari
+  const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+  const timeRemaining = sessionRecord.expiresAt.getTime() - Date.now();
+  if (timeRemaining < threeDaysInMs) {
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Jalankan tanpa await agar tidak ngeblok rendering
+    db.update(sessions)
+      .set({ expiresAt: newExpiresAt })
+      .where(eq(sessions.id, sessionId))
+      .execute()
+      .catch((err) => console.error("Failed to update session expiry", err));
   }
 
   return sessionRecord.user;
@@ -54,6 +67,19 @@ export async function getCurrentUserId(): Promise<string | null> {
 
   if (!sessionRecord || new Date() > sessionRecord.expiresAt) {
     return null;
+  }
+
+  // Sliding Session: Perpanjang di database jika sisa umur sesi < 3 hari
+  const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
+  const timeRemaining = sessionRecord.expiresAt.getTime() - Date.now();
+  if (timeRemaining < threeDaysInMs) {
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Jalankan tanpa await agar tidak ngeblok rendering
+    db.update(sessions)
+      .set({ expiresAt: newExpiresAt })
+      .where(eq(sessions.id, sessionId))
+      .execute()
+      .catch((err) => console.error("Failed to update session expiry", err));
   }
 
   return sessionRecord.userId;

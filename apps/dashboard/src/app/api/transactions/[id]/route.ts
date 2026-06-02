@@ -1,10 +1,15 @@
 import { getCurrentUser } from "@/lib/auth";
-import { getDb, transactions } from "@fincore/db";
+import {
+  getDb,
+  transactions,
+  transactionTagMappings,
+  transactionTags,
+} from "@fincore/db";
 import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 dayjs.extend(utc);
@@ -113,18 +118,63 @@ export async function PATCH(
       updateData.totalAmount = (amount + (isNaN(fee) ? 0 : fee)).toFixed(2);
     }
 
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(updateData).length === 0 && !body.tags) {
       return NextResponse.json(
         { error: "Tidak ada data yang diubah" },
         { status: 400 },
       );
     }
 
-    const [updated] = await db
-      .update(transactions)
-      .set(updateData)
-      .where(and(eq(transactions.id, id), eq(transactions.userId, user.id)))
-      .returning();
+    let updated = existing;
+    if (Object.keys(updateData).length > 0) {
+      const [res] = await db
+        .update(transactions)
+        .set(updateData)
+        .where(and(eq(transactions.id, id), eq(transactions.userId, user.id)))
+        .returning();
+      updated = res;
+    }
+
+    // Process Tags
+    if (body.tags && Array.isArray(body.tags)) {
+      // 1. Hapus semua mapping lama
+      await db
+        .delete(transactionTagMappings)
+        .where(eq(transactionTagMappings.transactionId, id));
+
+      // 2. Insert mapping baru
+      if (body.tags.length > 0) {
+        for (const tagName of body.tags) {
+          if (typeof tagName !== "string" || !tagName.trim()) continue;
+          const normalizedName = tagName.trim();
+
+          let tagRecord = await db.query.transactionTags.findFirst({
+            where: and(
+              eq(transactionTags.userId, user.id),
+              ilike(transactionTags.name, normalizedName),
+            ),
+          });
+
+          if (!tagRecord) {
+            [tagRecord] = await db
+              .insert(transactionTags)
+              .values({
+                userId: user.id,
+                name: normalizedName,
+              })
+              .returning();
+          }
+
+          await db
+            .insert(transactionTagMappings)
+            .values({
+              transactionId: id,
+              tagId: tagRecord.id,
+            })
+            .onConflictDoNothing();
+        }
+      }
+    }
 
     return NextResponse.json({ data: updated });
   } catch (error) {

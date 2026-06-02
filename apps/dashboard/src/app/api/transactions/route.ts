@@ -1,5 +1,10 @@
 import { getCurrentUser } from "@/lib/auth";
-import { getDb, transactions } from "@fincore/db";
+import {
+  getDb,
+  transactions,
+  transactionTagMappings,
+  transactionTags,
+} from "@fincore/db";
 import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -133,6 +138,7 @@ export async function POST(request: NextRequest) {
       transactionDate,
       sourceType = "text",
       isConfirmed = true,
+      tags = [],
     } = body;
 
     // Validasi dasar
@@ -177,6 +183,41 @@ export async function POST(request: NextRequest) {
         isConfirmed,
       })
       .returning();
+
+    // Process Tags
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      for (const tagName of tags) {
+        if (typeof tagName !== "string" || !tagName.trim()) continue;
+        const normalizedName = tagName.trim();
+
+        // Find or create tag
+        let tagRecord = await db.query.transactionTags.findFirst({
+          where: and(
+            eq(transactionTags.userId, user.id),
+            ilike(transactionTags.name, normalizedName),
+          ),
+        });
+
+        if (!tagRecord) {
+          [tagRecord] = await db
+            .insert(transactionTags)
+            .values({
+              userId: user.id,
+              name: normalizedName,
+            })
+            .returning();
+        }
+
+        // Map tag to transaction
+        await db
+          .insert(transactionTagMappings)
+          .values({
+            transactionId: newTransaction.id,
+            tagId: tagRecord.id,
+          })
+          .onConflictDoNothing();
+      }
+    }
 
     return NextResponse.json({ data: newTransaction }, { status: 201 });
   } catch (error) {
