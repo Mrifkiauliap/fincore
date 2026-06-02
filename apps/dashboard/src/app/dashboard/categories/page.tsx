@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ModalConfirm } from "@/components/ui/modal-confirm";
+import { useModalNotif } from "@/components/ui/modal-notif";
 import {
   Select,
   SelectContent,
@@ -109,6 +111,13 @@ export default function CategoriesPage() {
   });
   const [isEdit, setIsEdit] = useState(false);
 
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Notification modal
+  const notif = useModalNotif();
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -144,21 +153,35 @@ export default function CategoriesPage() {
       setIsEdit(false);
       fetchData();
     } catch (err) {
-      toast.error("Gagal menyimpan kategori");
+      notif.show(
+        "error",
+        "Gagal menyimpan kategori",
+        "Terjadi kesalahan saat menyimpan data kategori. Silakan coba lagi.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin hapus kategori custom ini?")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/categories/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) throw new Error("Gagal menghapus");
       toast.success("Kategori dihapus");
+      setDeleteTarget(null);
       fetchData();
     } catch (err) {
-      toast.error("Gagal menghapus kategori");
+      notif.show(
+        "error",
+        "Gagal menghapus kategori",
+        "Terjadi kesalahan saat menghapus kategori. Silakan coba lagi.",
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -280,6 +303,24 @@ export default function CategoriesPage() {
         </Dialog>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      <ModalConfirm
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+        variant="danger"
+        title="Hapus Kategori?"
+        description={`Kategori "${deleteTarget?.name}" akan dihapus permanen. Transaksi yang menggunakan kategori ini tidak akan terpengaruh.`}
+        confirmLabel="Hapus"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Notification Modal */}
+      {notif.modal}
+
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -365,7 +406,7 @@ export default function CategoriesPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                onClick={() => handleDelete(cat.id)}
+                                onClick={() => setDeleteTarget(cat)}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>

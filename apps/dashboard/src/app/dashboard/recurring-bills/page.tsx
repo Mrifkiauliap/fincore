@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ModalConfirm } from "@/components/ui/modal-confirm";
+import { useModalNotif } from "@/components/ui/modal-notif";
 import {
   Select,
   SelectContent,
@@ -85,6 +87,9 @@ export default function RecurringBillsPage() {
 
   const [form, setForm] = useState(emptyForm);
 
+  // Notification modal
+  const notif = useModalNotif();
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -154,7 +159,11 @@ export default function RecurringBillsPage() {
       setIsEdit(false);
       fetchData();
     } catch {
-      toast.error("Gagal menyimpan tagihan berkala");
+      notif.show(
+        "error",
+        "Gagal menyimpan tagihan berkala",
+        "Terjadi kesalahan saat menyimpan data tagihan. Silakan coba lagi.",
+      );
     } finally {
       setSaving(false);
     }
@@ -172,7 +181,11 @@ export default function RecurringBillsPage() {
       setDeleteId(null);
       fetchData();
     } catch {
-      toast.error("Gagal menghapus tagihan berkala");
+      notif.show(
+        "error",
+        "Gagal menghapus tagihan berkala",
+        "Terjadi kesalahan saat menghapus tagihan. Silakan coba lagi.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -311,34 +324,23 @@ export default function RecurringBillsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
+      {/* Delete Confirmation Modal */}
+      <ModalConfirm
         open={!!deleteId}
         onOpenChange={(v) => {
           if (!v) setDeleteId(null);
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hapus Tagihan Berkala?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Tagihan yang dihapus tidak dapat dikembalikan.
-          </p>
-          <div className="flex gap-3 justify-end">
-            <Button variant="outline" onClick={() => setDeleteId(null)}>
-              Batal
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "Menghapus..." : "Hapus"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        variant="danger"
+        title="Hapus Tagihan Berkala?"
+        description="Tagihan yang dihapus tidak dapat dikembalikan."
+        confirmLabel="Hapus"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteId(null)}
+      />
+
+      {/* Notification Modal */}
+      {notif.modal}
 
       {/* Quick Stats */}
       {!loading && bills.length > 0 && (

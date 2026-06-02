@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ModalConfirm } from "@/components/ui/modal-confirm";
+import { useModalNotif } from "@/components/ui/modal-notif";
 import {
   Select,
   SelectContent,
@@ -97,6 +99,13 @@ export default function PaymentMethodsPage() {
   });
   const [isEdit, setIsEdit] = useState(false);
 
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<PaymentMethod | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Notification modal
+  const notif = useModalNotif();
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -136,23 +145,35 @@ export default function PaymentMethodsPage() {
       setIsEdit(false);
       fetchData();
     } catch (err) {
-      toast.error("Gagal menyimpan metode pembayaran");
+      notif.show(
+        "error",
+        "Gagal menyimpan metode pembayaran",
+        "Terjadi kesalahan saat menyimpan data metode pembayaran. Silakan coba lagi.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Yakin hapus metode pembayaran custom ini?")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/payment-methods/${id}`, {
+      const res = await fetch(`/api/payment-methods/${deleteTarget.id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Gagal menghapus");
       toast.success("Metode pembayaran dihapus");
+      setDeleteTarget(null);
       fetchData();
     } catch (err) {
-      toast.error("Gagal menghapus metode pembayaran");
+      notif.show(
+        "error",
+        "Gagal menghapus metode pembayaran",
+        "Terjadi kesalahan saat menghapus metode pembayaran. Silakan coba lagi.",
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -274,6 +295,24 @@ export default function PaymentMethodsPage() {
         </Dialog>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      <ModalConfirm
+        open={!!deleteTarget}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+        variant="danger"
+        title="Hapus Metode Pembayaran?"
+        description={`Metode "${deleteTarget?.name}" akan dihapus permanen.`}
+        confirmLabel="Hapus"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Notification Modal */}
+      {notif.modal}
+
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -344,7 +383,7 @@ export default function PaymentMethodsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDelete(method.id)}
+                              onClick={() => setDeleteTarget(method)}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
