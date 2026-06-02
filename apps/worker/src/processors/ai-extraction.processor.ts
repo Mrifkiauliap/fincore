@@ -12,6 +12,7 @@ import {
   transactions,
   transactionTagMappings,
   transactionTags,
+  users,
 } from "@fincore/db";
 import { createValkeyConnection, enqueue, sendWaMessage } from "@fincore/queue";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@fincore/shared";
 import { StorageProvider } from "@fincore/storage";
 import {
+  DEFAULT_TIMEZONE,
   formatCurrency,
   getTransactionTypeLabel,
   toTitleCase,
@@ -29,7 +31,13 @@ import {
 import { Injectable } from "@nestjs/common";
 import axios from "axios";
 import { Job } from "bullmq";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq, ilike, isNull, or } from "drizzle-orm";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface AiExtractionJobData {
   rawMessageId: string;
@@ -105,6 +113,8 @@ export class AiExtractionProcessor extends BaseProcessor {
       .where(eq(transactionTags.userId, data.userId))
       .limit(30);
 
+    const userTz = await this.getUserTimezone(data.userId);
+
     const context = {
       categories: {
         expense: allCategories
@@ -119,6 +129,7 @@ export class AiExtractionProcessor extends BaseProcessor {
       },
       paymentMethods: allPaymentMethods.map((p) => p.name),
       tags: userTags.map((t) => t.name),
+      timezone: userTz,
     };
 
     // ── 2. Extract via AI (returns array) ─────────────────────────────────────
@@ -283,7 +294,7 @@ export class AiExtractionProcessor extends BaseProcessor {
           : needsConfirmation
             ? "low_confidence"
             : null;
-      let transactionDate = new Date();
+      let transactionDate = dayjs().tz(userTz).toDate();
       if (extracted.transaction_date) {
         const parsedDate = new Date(extracted.transaction_date);
         if (!isNaN(parsedDate.getTime())) {
@@ -758,5 +769,15 @@ export class AiExtractionProcessor extends BaseProcessor {
       `• _"Terima gaji 5jt"_\n` +
       `• _"Tf ke OVO 100rb dari Dana, admin 1rb"_`
     );
+  }
+
+  private async getUserTimezone(userId: string): Promise<string> {
+    const db = getDb();
+    const [user] = await db
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return user?.timezone || DEFAULT_TIMEZONE;
   }
 }

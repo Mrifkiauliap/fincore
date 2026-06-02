@@ -5,6 +5,24 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+/** Timezone default untuk aplikasi (Asia/Jakarta = WIB, UTC+7) */
+export const DEFAULT_TIMEZONE = "Asia/Jakarta";
+
+/**
+ * Dapatkan dayjs instance di timezone tertentu.
+ * Fallback ke DEFAULT_TIMEZONE ("Asia/Jakarta") jika tidak diberikan.
+ */
+export function dayjsInTz(tz?: string | null): dayjs.Dayjs {
+  return dayjs().tz(tz || DEFAULT_TIMEZONE);
+}
+
+/**
+ * Dapatkan objek Date sekarang di timezone tertentu.
+ */
+export function nowInTz(tz?: string | null): Date {
+  return dayjsInTz(tz).toDate();
+}
+
 /**
  * Format label tanggal jatuh tempo (contoh: "hari ini", "besok", "tanggal 15 (besok)")
  */

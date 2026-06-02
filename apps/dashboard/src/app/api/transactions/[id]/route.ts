@@ -1,7 +1,14 @@
 import { getCurrentUser } from "@/lib/auth";
 import { getDb, transactions } from "@fincore/db";
+import { DEFAULT_TIMEZONE } from "@fincore/utils";
+import dayjs from "dayjs";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function GET(
   _request: NextRequest,
@@ -50,6 +57,7 @@ export async function PATCH(
     const user = await getCurrentUser();
     const { id } = await params;
     const db = getDb();
+    const tz = user.timezone ?? DEFAULT_TIMEZONE;
     const body = await request.json();
 
     const existing = await db.query.transactions.findFirst({
@@ -82,7 +90,7 @@ export async function PATCH(
     if (body.isConfirmed !== undefined)
       updateData.isConfirmed = body.isConfirmed;
     if (body.transactionDate !== undefined) {
-      updateData.transactionDate = new Date(body.transactionDate);
+      updateData.transactionDate = dayjs(body.transactionDate).tz(tz).toDate();
     }
 
     if (body.amount !== undefined || body.fee !== undefined) {

@@ -8,6 +8,7 @@ export interface ExtractionContext {
   };
   paymentMethods: string[];
   tags: string[];
+  timezone?: string;
 }
 
 // ─── AI Provider Interface ────────────────────────────────────────────────────

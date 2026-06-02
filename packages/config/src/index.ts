@@ -3,8 +3,18 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 
-// Find and load the nearest .env file walking up from process.cwd() or __dirname
+/**
+ * Only load .env from filesystem in development.
+ * In production/Docker, env vars are injected by the orchestrator
+ * (docker-compose, k8s, etc.) — we must NOT override them with stale
+ * .env files that may have been bundled into the Next.js standalone artifact.
+ */
 function loadEnv() {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
+  // Walk up from CWD and __dirname to find .env (dev only)
   const searchDirs = [process.cwd(), __dirname];
 
   for (let currentDir of searchDirs) {
