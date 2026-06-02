@@ -7,7 +7,7 @@
  * The base64 encoding prevents casual URL guessing.
  *
  * Uses btoa/atob (browser-native) with manual base64url conversion,
- * NOT Buffer (Node.js-only) — this file is imported by client components.
+ * NOT Buffer (Node.js-only) -this file is imported by client components.
  */
 
 function toBase64url(str: string): string {

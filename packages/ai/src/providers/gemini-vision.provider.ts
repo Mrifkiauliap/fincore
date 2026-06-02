@@ -121,7 +121,7 @@ export class GeminiVisionProvider implements IVisionProvider {
       extractedText,
       provider: getConfig("AI_VISION_MODEL"),
       // Gemini tidak memberikan confidence score native untuk OCR,
-      // jadi kita biarkan undefined — downstream akan menghitung
+      // jadi kita biarkan undefined -downstream akan menghitung
       // confidence dari AI extraction.
       confidence: undefined,
     };
