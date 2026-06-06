@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, recurringBills } from "@fincore/db";
-import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -10,6 +10,9 @@ import { NextRequest, NextResponse } from "next/server";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+/** Timezone default global */
+const TZ = "Asia/Jakarta";
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -18,7 +21,6 @@ export async function PATCH(
     const user = await getCurrentUser();
     const { id } = await params;
     const db = getDb();
-    const tz = user.timezone ?? DEFAULT_TIMEZONE;
     const body = await request.json();
 
     const existing = await db.query.recurringBills.findFirst({
@@ -47,7 +49,7 @@ export async function PATCH(
     if (body.notes !== undefined) updateData.notes = body.notes || null;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
     if (body.nextReminderAt !== undefined) {
-      updateData.nextReminderAt = dayjs(body.nextReminderAt).tz(tz).toDate();
+      updateData.nextReminderAt = dayjs(body.nextReminderAt).tz(TZ).toDate();
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -65,7 +67,10 @@ export async function PATCH(
 
     return NextResponse.json({ data: updated });
   } catch (error) {
-    console.error("PATCH /api/recurring-bills/[id] error:", error);
+    logger.error(
+      { route: "PATCH /api/recurring-bills/[id]", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengupdate tagihan" },
       { status: 500 },

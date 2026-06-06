@@ -33,3 +33,22 @@ export function getDb() {
 }
 
 export * from "./schema";
+
+// ─── Analytics Helper ───────────────────────────────────────────────────────────
+
+import type { NewAnalyticsEvent } from "./schema/analytics-events";
+import { analyticsEvents } from "./schema/analytics-events";
+
+/**
+ * Fire-and-forget insert ke analytics_events.
+ * Tidak mengganggu main flow — error di sini hanya di-log.
+ */
+export async function trackEvent(event: NewAnalyticsEvent): Promise<void> {
+  try {
+    const db = getDb();
+    await db.insert(analyticsEvents).values(event);
+  } catch (err) {
+    // Jangan ganggu main flow
+    console.error("[analytics] Failed to insert event:", err);
+  }
+}

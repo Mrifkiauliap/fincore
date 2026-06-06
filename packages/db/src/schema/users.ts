@@ -10,6 +10,7 @@ import {
 /**
  * Tabel pengguna FinCore.
  * Diidentifikasi berdasarkan nomor WhatsApp (format: 628xxxxxxxxxx).
+ * Timezone selalu "Asia/Jakarta" dan currency selalu "IDR" secara global.
  */
 export const users = pgTable(
   "users",
@@ -17,12 +18,10 @@ export const users = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     phone: text("phone").notNull().unique(),
     name: text("name"),
-    timezone: text("timezone").default("Asia/Jakarta"),
     isActive: boolean("is_active").default(true).notNull(),
     onboardedAt: timestamp("onboarded_at"),
     reportSchedule: text("report_schedule").default("monthly"),
     reportTime: text("report_time").default("07:00"),
-    preferredCurrency: text("preferred_currency").default("IDR"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

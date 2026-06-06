@@ -19,7 +19,6 @@ export interface ReportData {
   totalExpense: number;
   totalTransfer: number;
   netBalance: number;
-  currency: string;
   breakdown: {
     categoryId: string | null;
     categoryName: string;

@@ -25,7 +25,6 @@ export const recurringBills = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     amount: numeric("amount", { precision: 15, scale: 2 }),
-    currency: text("currency").default("IDR").notNull(),
     paymentMethodId: uuid("payment_method_id").references(
       () => paymentMethods.id,
       { onDelete: "set null" },

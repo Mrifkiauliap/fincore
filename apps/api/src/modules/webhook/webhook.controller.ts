@@ -1,20 +1,21 @@
+import { OwnerOnlyGuard } from "@/common/guards/owner.guard";
 import { WebhookSignatureGuard } from "@/common/guards/webhook-signature.guard";
 import { WahaWebhookPayload } from "@/modules/webhook/waha-payload.dto";
 import { WebhookService } from "@/modules/webhook/webhook.service";
+import { createLogger } from "@fincore/logger";
 import {
   Body,
   Controller,
   HttpCode,
   HttpStatus,
-  Logger,
   Post,
   UseGuards,
 } from "@nestjs/common";
 
+const logger = createLogger("webhook:controller");
+
 @Controller("webhook")
 export class WebhookController {
-  private readonly logger = new Logger(WebhookController.name);
-
   constructor(private readonly webhookService: WebhookService) {}
 
   /**
@@ -27,13 +28,10 @@ export class WebhookController {
    */
   @Post("whatsapp")
   @HttpCode(HttpStatus.OK)
-  @UseGuards(WebhookSignatureGuard)
+  @UseGuards(WebhookSignatureGuard, OwnerOnlyGuard)
   receive(@Body() payload: WahaWebhookPayload): { ok: boolean } {
     this.webhookService.handleIncoming(payload).catch((err: unknown) => {
-      this.logger.error(
-        { err, event: payload.event },
-        "Webhook processing error",
-      );
+      logger.error({ err, event: payload.event }, "Webhook processing error");
     });
 
     return { ok: true };

@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, sessions } from "@fincore/db";
 import { and, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -101,7 +102,10 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ data: { deleted: sessionId } });
   } catch (err) {
-    console.error("DELETE /api/sessions error:", err);
+    logger.error(
+      { route: "DELETE /api/sessions", err: String(err) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal menghapus sesi" },
       { status: 500 },

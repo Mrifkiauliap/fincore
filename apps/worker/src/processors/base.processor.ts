@@ -1,12 +1,13 @@
 import getConfig from "@fincore/config";
+import { trackEvent } from "@fincore/db";
 import { createLogger, Logger } from "@fincore/logger";
-import { createValkeyConnection } from "@fincore/queue";
+import { getSharedValkey } from "@fincore/queue";
 import { OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { Job, Worker, WorkerOptions } from "bullmq";
 
 /**
  * Base class for all BullMQ processors.
- * Handles worker lifecycle (init/destroy) and error logging.
+ * Uses a single shared Valkey connection (getSharedValkey) for all workers.
  *
  * Usage:
  * @Injectable()
@@ -26,7 +27,7 @@ export abstract class BaseProcessor implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const opts: WorkerOptions = {
-      connection: createValkeyConnection(),
+      connection: getSharedValkey(),
       concurrency: Number(getConfig("WORKER_CONCURRENCY") ?? 5),
       ...this.workerOptions(),
     };
@@ -56,6 +57,15 @@ export abstract class BaseProcessor implements OnModuleInit, OnModuleDestroy {
 
     this.worker.on("failed", (job, err) => {
       this.logger.error({ jobId: job?.id, err }, "Job permanently failed");
+      trackEvent({
+        category: "queue",
+        event: "job.permanently_failed",
+        metadata: {
+          jobId: job?.id ?? "unknown",
+          jobName: job?.name ?? this.queueName,
+          error: String(err),
+        },
+      }).catch(() => {}); // fire-and-forget
     });
 
     this.logger.info(`⚙️  Processor started: ${this.queueName}`);

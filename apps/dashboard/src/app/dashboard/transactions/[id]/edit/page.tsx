@@ -114,7 +114,7 @@ export default function TransactionFormPage() {
             type: tx.type,
             amount: tx.amount,
             fee: tx.fee || "0",
-            currency: tx.currency || "IDR",
+            currency: "IDR",
             categoryId: tx.categoryId || "",
             paymentMethodId: tx.paymentMethodId || "",
             toPaymentMethodId: tx.toPaymentMethodId || "",

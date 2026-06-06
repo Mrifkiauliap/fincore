@@ -1,7 +1,7 @@
 import { DRIZZLE } from "@/modules/database/database.module";
 import getConfig from "@fincore/config";
 import { getDb, sessions, users } from "@fincore/db";
-import { enqueue } from "@fincore/queue";
+import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Inject, Injectable } from "@nestjs/common";
 import crypto from "crypto";
@@ -45,12 +45,10 @@ export class AuthService {
         },
       );
     } else {
-      const { sendWaMessage } = await import("@fincore/queue");
       const triggerPrefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
       await sendWaMessage(
         chatId,
         `👋 Halo! Kamu belum terdaftar di FinCore.\n\nSilakan daftar terlebih dahulu dengan mengetik:\n*${triggerPrefix}daftar*`,
-        undefined,
       );
     }
   }

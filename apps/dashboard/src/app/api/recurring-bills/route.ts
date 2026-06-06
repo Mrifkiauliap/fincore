@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, recurringBills } from "@fincore/db";
-import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -9,6 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+/** Timezone default global */
+const TZ = "Asia/Jakarta";
 
 export async function GET() {
   try {
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser();
     const db = getDb();
     const body = await request.json();
-    const tz = user.timezone ?? DEFAULT_TIMEZONE;
+    const tz = TZ;
 
     const {
       name,
@@ -70,14 +73,17 @@ export async function POST(request: NextRequest) {
         paymentMethodId: paymentMethodId || null,
         categoryId: categoryId || null,
         notes: notes || null,
-        nextReminderAt: dayjs(nextReminderAt).tz(tz).toDate(),
+        nextReminderAt: dayjs(nextReminderAt).tz(TZ).toDate(),
         isActive: true,
       })
       .returning();
 
     return NextResponse.json({ data: bill }, { status: 201 });
   } catch (error) {
-    console.error("POST /api/recurring-bills error:", error);
+    logger.error(
+      { route: "POST /api/recurring-bills", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal membuat tagihan berulang" },
       { status: 500 },

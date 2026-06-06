@@ -1,6 +1,7 @@
 import { AppModule } from "@/app.module";
 import getConfig from "@fincore/config";
 import { createLogger } from "@fincore/logger";
+import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import {
   FastifyAdapter,
@@ -15,6 +16,18 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({ logger: false }),
   );
+
+  // Global validation — rejects malformed payloads at the boundary
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: false,
+    }),
+  );
+
+  // Graceful shutdown — prevents data corruption on container stop
+  app.enableShutdownHooks();
 
   // Swagger (dev only)
   if (getConfig("NODE_ENV") !== "production") {
