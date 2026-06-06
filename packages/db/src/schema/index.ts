@@ -3,6 +3,7 @@ export * from "./enums";
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
 export * from "./ai-processing-logs";
+export * from "./analytics-events";
 export * from "./budgets";
 export * from "./enums";
 export * from "./payment-methods";

@@ -5,7 +5,6 @@ import {
   AiMultiExtractionOutputSchema,
 } from "@fincore/contracts";
 import { createLogger } from "@fincore/logger";
-import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import axios from "axios";
 import { ExtractionContext, IAiProvider } from "../interfaces";
 
@@ -201,9 +200,8 @@ ${context.tags.join(", ")}`;
 
   const categoryGuide = buildCategoryGuide(context);
 
-  const tz = context?.timezone ?? DEFAULT_TIMEZONE;
   const todayStr = new Date().toLocaleString("id-ID", {
-    timeZone: tz,
+    timeZone: "Asia/Jakarta",
   });
 
   return `

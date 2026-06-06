@@ -46,12 +46,20 @@ CREATE TABLE "ai_processing_logs" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "analytics_events" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"category" "analytics_event_category" NOT NULL,
+	"event" text NOT NULL,
+	"metadata" jsonb,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "budgets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"category_id" uuid NOT NULL,
 	"amount" numeric(15, 2) NOT NULL,
-	"currency" text DEFAULT 'IDR' NOT NULL,
 	"month" integer NOT NULL,
 	"year" integer NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
@@ -114,7 +122,6 @@ CREATE TABLE "recurring_bills" (
 	"user_id" uuid NOT NULL,
 	"name" text NOT NULL,
 	"amount" numeric(15, 2),
-	"currency" text DEFAULT 'IDR' NOT NULL,
 	"payment_method_id" uuid,
 	"category_id" uuid,
 	"frequency" text DEFAULT 'MONTHLY' NOT NULL,
@@ -195,7 +202,6 @@ CREATE TABLE "transactions" (
 	"fee" numeric(15, 2) DEFAULT '0' NOT NULL,
 	"total_amount" numeric(15, 2) NOT NULL,
 	"fee_note" text,
-	"currency" text DEFAULT 'IDR' NOT NULL,
 	"merchant" text,
 	"location" text,
 	"notes" text,
@@ -216,12 +222,10 @@ CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"phone" text NOT NULL,
 	"name" text,
-	"timezone" text DEFAULT 'Asia/Jakarta',
 	"is_active" boolean DEFAULT true NOT NULL,
 	"onboarded_at" timestamp,
 	"report_schedule" text DEFAULT 'monthly',
 	"report_time" text DEFAULT '07:00',
-	"preferred_currency" text DEFAULT 'IDR',
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_phone_unique" UNIQUE("phone")
@@ -256,6 +260,7 @@ CREATE TABLE "webhook_subscriptions" (
 );
 --> statement-breakpoint
 ALTER TABLE "ai_processing_logs" ADD CONSTRAINT "ai_processing_logs_raw_message_id_raw_messages_id_fk" FOREIGN KEY ("raw_message_id") REFERENCES "public"."raw_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "analytics_events" ADD CONSTRAINT "analytics_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "budgets" ADD CONSTRAINT "budgets_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "budgets" ADD CONSTRAINT "budgets_category_id_transaction_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."transaction_categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment_methods" ADD CONSTRAINT "payment_methods_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -279,6 +284,10 @@ ALTER TABLE "webhook_delivery_logs" ADD CONSTRAINT "webhook_delivery_logs_subscr
 CREATE INDEX "idx_ai_processing_logs_raw_message_id" ON "ai_processing_logs" USING btree ("raw_message_id");--> statement-breakpoint
 CREATE INDEX "idx_ai_processing_logs_step" ON "ai_processing_logs" USING btree ("step");--> statement-breakpoint
 CREATE INDEX "idx_ai_processing_logs_status" ON "ai_processing_logs" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "idx_analytics_events_category" ON "analytics_events" USING btree ("category");--> statement-breakpoint
+CREATE INDEX "idx_analytics_events_event" ON "analytics_events" USING btree ("event");--> statement-breakpoint
+CREATE INDEX "idx_analytics_events_user_id" ON "analytics_events" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "idx_analytics_events_created_at" ON "analytics_events" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "idx_budgets_user_month_year" ON "budgets" USING btree ("user_id","month","year");--> statement-breakpoint
 CREATE INDEX "idx_payment_methods_user_id" ON "payment_methods" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_payment_methods_type" ON "payment_methods" USING btree ("type");--> statement-breakpoint

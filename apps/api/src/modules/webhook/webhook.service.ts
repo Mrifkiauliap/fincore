@@ -1,4 +1,5 @@
 import { AuthService } from "@/modules/auth/auth.service";
+import { CommandRouterService } from "@/modules/webhook/command-router.service";
 import { DRIZZLE } from "@/modules/database/database.module";
 import {
   mapWahaTypeToMessageType,
@@ -9,9 +10,9 @@ import { FinanceGuardrail, MessageIntent } from "@fincore/ai";
 import getConfig from "@fincore/config";
 import { getDb } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
-import { createValkeyConnection, enqueue, sendWaMessage } from "@fincore/queue";
+import { enqueue, getSharedValkey, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
-import { dayjsInTz, DEFAULT_TIMEZONE, extractPhone } from "@fincore/utils";
+import { dayjsInTz, extractPhone } from "@fincore/utils";
 import { Inject, Injectable } from "@nestjs/common";
 
 const logger = createLogger("webhook");
@@ -20,11 +21,12 @@ const logger = createLogger("webhook");
 export class WebhookService {
   private readonly guardrail = new FinanceGuardrail();
   private readonly triggerPrefix = getConfig("FINCORE_TRIGGER_PREFIX") ?? "";
-  private readonly valkey = createValkeyConnection();
+  private readonly valkey = getSharedValkey();
 
   constructor(
     @Inject(DRIZZLE) private readonly db: ReturnType<typeof getDb>,
     private readonly authService: AuthService,
+    private readonly commandRouter: CommandRouterService,
   ) {}
 
   async handleIncoming(payload: WahaWebhookPayload): Promise<void> {
@@ -56,7 +58,6 @@ export class WebhookService {
 
     // ── Extract body ──
     const cleanBody = (msg.body ?? "").trim();
-
     const senderPhone = extractPhone(msg.from);
 
     // ── Extract media info from WAHA payload ─────────────────────────────────
@@ -147,173 +148,18 @@ export class WebhookService {
 
       // ── Command Routing (Bypass AI) ───────────────────────────────────────────
       if (messageType === MessageType.TEXT && lowerBody.startsWith(p)) {
-        // /daftar
-        if (isRegisterCommand) {
-          await sendWaMessage(
-            msg.from,
-            `✅ Anda sudah terdaftar atas nama *${user.name}*.`,
-            msg.id,
-          );
+        const result = await this.commandRouter.routeCommand(
+          msg,
+          senderPhone,
+          cleanBody,
+          lowerBody,
+          this.getGreetingReply(null),
+        );
+
+        if (result.routed) {
           return;
         }
-
-        // /dashboard or /login
-        if (lowerBody === p + "dashboard" || lowerBody === p + "login") {
-          const magicLink = await this.authService.generateMagicLink(user.id);
-
-          await sendWaMessage(
-            msg.from,
-            `🔑 *Akses Dashboard FinCore*\n\nKlik tautan sekali pakai di bawah ini untuk masuk ke Dashboard Anda (berlaku 5 menit):\n\n${magicLink}`,
-            msg.id,
-          );
-          return;
-        }
-        // /budget
-        if (lowerBody.startsWith(p + "budget")) {
-          await enqueue(
-            QueueName.BUDGET_COMMAND,
-            JobName.PROCESS_BUDGET_COMMAND,
-            {
-              chatId: msg.from,
-              senderPhone,
-              commandText: cleanBody,
-            },
-          );
-          return;
-        }
-
-        // /hapus, /hapus terakhir, /hapus [nama], /konfirmasi, /ubah
-        if (
-          lowerBody.startsWith(p + "hapus") ||
-          lowerBody.startsWith(p + "konfirmasi") ||
-          lowerBody.startsWith(p + "ubah")
-        ) {
-          await enqueue(
-            QueueName.TRANSACTION_COMMAND,
-            JobName.PROCESS_TRANSACTION_COMMAND,
-            { chatId: msg.from, senderPhone, commandText: cleanBody },
-          );
-          return;
-        }
-
-        // /tambah, /lihat, /cari
-        if (
-          lowerBody.startsWith(p + "tambah") ||
-          lowerBody.startsWith(p + "lihat") ||
-          lowerBody.startsWith(p + "cari")
-        ) {
-          await enqueue(
-            QueueName.CUSTOM_COMMAND,
-            JobName.PROCESS_CUSTOM_COMMAND,
-            { chatId: msg.from, senderPhone, commandText: cleanBody },
-          );
-          return;
-        }
-
-        // /atur, /settings
-        if (
-          lowerBody.startsWith(p + "atur") ||
-          lowerBody.startsWith(p + "settings")
-        ) {
-          await enqueue(
-            QueueName.SETTINGS_COMMAND,
-            JobName.PROCESS_SETTINGS_COMMAND,
-            { chatId: msg.from, senderPhone, commandText: cleanBody },
-          );
-          return;
-        }
-
-        // /laporan harian
-        if (
-          lowerBody === p + "laporan hari" ||
-          lowerBody === p + "laporan harian"
-        ) {
-          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-            from: msg.from,
-            senderPhone,
-            query: "laporan hari ini",
-            type: "query",
-            rawMessageId: msg.id,
-          });
-          await sendWaMessage(
-            msg.from,
-            "Sedang merekap laporan harian...",
-            msg.id,
-          );
-          return;
-        }
-
-        // /laporan mingguan
-        if (
-          lowerBody === p + "laporan minggu" ||
-          lowerBody === p + "laporan mingguan"
-        ) {
-          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-            from: msg.from,
-            senderPhone,
-            query: "laporan minggu ini",
-            type: "query",
-            rawMessageId: msg.id,
-          });
-          await sendWaMessage(
-            msg.from,
-            "Sedang merekap laporan mingguan...",
-            msg.id,
-          );
-          return;
-        }
-
-        // /laporan bulanan
-        if (
-          lowerBody === p + "laporan bulan" ||
-          lowerBody === p + "laporan bulanan"
-        ) {
-          await enqueue(
-            QueueName.MONTHLY_REPORT,
-            JobName.GENERATE_MONTHLY_REPORT,
-            { senderPhone },
-          );
-          await sendWaMessage(
-            msg.from,
-            "Sedang merekap laporan bulanan...",
-            msg.id,
-          );
-          return;
-        }
-
-        // /summary - ringkasan hari ini / minggu ini
-        if (lowerBody === p + "summary" || lowerBody === p + "ringkasan") {
-          await enqueue(QueueName.REPORT_GENERATION, JobName.GENERATE_REPORT, {
-            from: msg.from,
-            senderPhone,
-            query: "ringkasan bulan ini",
-            type: "query",
-            rawMessageId: msg.id,
-          });
-          await sendWaMessage(msg.from, "Sedang merekap ringkasan...", msg.id);
-          return;
-        }
-
-        // /bantuan, /help
-        if (
-          lowerBody.startsWith(p + "bantuan") ||
-          lowerBody.startsWith(p + "help")
-        ) {
-          await sendWaMessage(
-            msg.from,
-            this.getGreetingReply(user?.timezone),
-            msg.id,
-          );
-          return;
-        }
-
-        // /catat (Bypass to AI Guardrail intentionally)
-        if (lowerBody.startsWith(p + "catat")) {
-          // Biarkan jatuh (fall-through) ke AI Guardrail di bawah
-          logger.debug("Received /catat command, passing to AI Guardrail");
-        }
-        // Jika command menggunakan prefix tapi bukan command di atas, biarkan jatuh ke AI Guardrail.
-        // Guardrail akan mendeteksi apakah itu transaksi valid (misal "/beli bensin") atau tidak.
+        // Falls through to AI guardrail for unrecognized commands (/catat, /beli, etc.)
       }
 
       // ── Guardrail: check intent for text messages ─────────────────────────────
@@ -334,11 +180,7 @@ export class WebhookService {
         }
 
         if (intentResult.intent === MessageIntent.GREETING) {
-          await sendWaMessage(
-            msg.from,
-            this.getGreetingReply(user?.timezone),
-            msg.id,
-          );
+          await sendWaMessage(msg.from, this.getGreetingReply(null), msg.id);
           return;
         }
 
@@ -363,7 +205,7 @@ export class WebhookService {
           await enqueue(QueueName.CONFIRMATION, JobName.CONFIRM_TRANSACTION, {
             chatId: msg.from,
             senderPhone,
-            answer: intentResult.extractedQuery ?? cleanBody, // "yes" or "no"
+            answer: intentResult.extractedQuery ?? cleanBody,
           });
           return;
         }
@@ -428,8 +270,8 @@ export class WebhookService {
     return messages[type] ?? "Memproses...";
   }
 
-  private getGreetingReply(userTimezone?: string | null): string {
-    const hour = dayjsInTz(userTimezone ?? DEFAULT_TIMEZONE).hour();
+  getGreetingReply(_userTimezone?: string | null): string {
+    const hour = dayjsInTz().hour();
     const salam =
       hour < 11
         ? "Selamat pagi"

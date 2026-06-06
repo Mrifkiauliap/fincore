@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, transactionCategories } from "@fincore/db";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -57,7 +58,10 @@ export async function PATCH(
 
     return NextResponse.json({ data: updated });
   } catch (error) {
-    console.error("PATCH /api/categories/[id] error:", error);
+    logger.error(
+      { route: "PATCH /api/categories/[id]", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengupdate kategori" },
       { status: 500 },

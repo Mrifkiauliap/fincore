@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, recurringBills, transactions } from "@fincore/db";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -14,7 +15,6 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
-    const tz = user.timezone ?? undefined;
 
     const range = searchParams.get("range") || "30d";
     const rangeDays: Record<string, number> = {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     };
     const days = rangeDays[range] || 30;
     const rangeStart = dayjs()
-      .tz(tz)
+      .tz("Asia/Jakarta")
       .subtract(days, "day")
       .startOf("day")
       .toDate();
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 
     // === Weekly trend (last 4 weeks) ===
     const fourWeeksAgo = dayjs()
-      .tz(tz)
+      .tz("Asia/Jakarta")
       .subtract(4, "week")
       .startOf("week")
       .toDate();
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
           eq(transactions.type, "expense"),
           gte(
             transactions.transactionDate,
-            dayjs().tz(tz).subtract(90, "day").toDate(),
+            dayjs().tz("Asia/Jakarta").subtract(90, "day").toDate(),
           ),
         ),
       )
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     // === Burn Rate: avg monthly expense (last 3 months) ===
     const threeMonthsAgo = dayjs()
-      .tz(tz)
+      .tz("Asia/Jakarta")
       .subtract(3, "month")
       .startOf("month")
       .toDate();
@@ -299,7 +299,10 @@ export async function GET(request: NextRequest) {
       period: { days, range },
     });
   } catch (error) {
-    console.error("GET /api/insights error:", error);
+    logger.error(
+      { route: "GET /api/insights", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengambil insight" },
       { status: 500 },

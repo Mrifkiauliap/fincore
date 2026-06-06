@@ -6,7 +6,9 @@ import { Redis } from "ioredis";
 
 const logger = createLogger("queue");
 
-// ─── Valkey Connection ────────────────────────────────────────────────────────
+// ─── Shared Valkey Connection Singleton ────────────────────────────────────────
+let _sharedValkey: Redis | null = null;
+
 export function createValkeyConnection(): Redis {
   const connection = new Redis(
     getConfig("VALKEY_URL") ?? "redis://localhost:6379",
@@ -20,6 +22,29 @@ export function createValkeyConnection(): Redis {
   connection.on("error", (err) => logger.error({ err }, "Valkey error"));
 
   return connection;
+}
+
+/**
+ * Returns a shared Valkey connection singleton.
+ * All consumers (processors, services, guards) should use this
+ * instead of calling createValkeyConnection() individually.
+ */
+export function getSharedValkey(): Redis {
+  if (!_sharedValkey) {
+    _sharedValkey = createValkeyConnection();
+  }
+  return _sharedValkey;
+}
+
+/**
+ * Close the shared Valkey connection (graceful shutdown).
+ */
+export async function closeSharedValkey(): Promise<void> {
+  if (_sharedValkey) {
+    await _sharedValkey.quit();
+    _sharedValkey = null;
+    logger.info("Shared Valkey connection closed");
+  }
 }
 
 // ─── Default Job Options ──────────────────────────────────────────────────────
@@ -38,7 +63,7 @@ const queues = new Map<string, Queue>();
 
 export function getQueue(name: string): Queue {
   if (!queues.has(name)) {
-    const connection = createValkeyConnection();
+    const connection = getSharedValkey();
     const queue = new Queue(name, {
       connection,
       defaultJobOptions,
@@ -69,17 +94,21 @@ export function getAllQueues(): Queue[] {
   return Object.values(QueueName).map((name) => getQueue(name));
 }
 
-// ─── Message Helper ───────────────────────────────────────────────────────────
+// ─── Message Helpers (self-catching — never throw) ────────────────────────────
 export async function sendWaMessage(
   chatId: string,
   text: string,
   replyTo?: string,
 ): Promise<void> {
-  await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
-    chatId,
-    text,
-    replyTo,
-  });
+  try {
+    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_MESSAGE, {
+      chatId,
+      text,
+      replyTo,
+    });
+  } catch (err) {
+    logger.error({ err, chatId }, "sendWaMessage failed");
+  }
 }
 
 export async function sendWaImage(
@@ -87,11 +116,15 @@ export async function sendWaImage(
   imageUrl: string,
   caption?: string,
 ): Promise<void> {
-  await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_IMAGE, {
-    chatId,
-    imageUrl,
-    caption,
-  });
+  try {
+    await enqueue(QueueName.WA_SENDER, JobName.SEND_WA_IMAGE, {
+      chatId,
+      imageUrl,
+      caption,
+    });
+  } catch (err) {
+    logger.error({ err, chatId }, "sendWaImage failed");
+  }
 }
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────

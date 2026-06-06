@@ -57,7 +57,6 @@ export const transactions = pgTable(
     fee: numeric("fee", { precision: 15, scale: 2 }).default("0").notNull(),
     totalAmount: numeric("total_amount", { precision: 15, scale: 2 }).notNull(),
     feeNote: text("fee_note"),
-    currency: text("currency").default("IDR").notNull(),
     merchant: text("merchant"),
     location: text("location"),
     notes: text("notes"),

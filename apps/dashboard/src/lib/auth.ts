@@ -1,4 +1,5 @@
-import { getDb, sessions, type User } from "@fincore/db";
+import getConfig from "@fincore/config";
+import { getDb, sessions, users, type User } from "@fincore/db";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -83,4 +84,36 @@ export async function getCurrentUserId(): Promise<string | null> {
   }
 
   return sessionRecord.userId;
+}
+
+/**
+ * Cek apakah user yang sedang login adalah owner berdasarkan OWNER_PHONE.
+ * Dipake buat guard route system (analytics, health, logs) yang cuma boleh diakses owner.
+ */
+export async function getIsOwner(): Promise<boolean> {
+  const userId = await getCurrentUserId();
+  if (!userId) return false;
+
+  const ownerPhone = getConfig("OWNER_PHONE");
+  const ownerLid = getConfig("OWNER_LID");
+  if (!ownerPhone && !ownerLid) return false;
+
+  const db = getDb();
+  const [user] = await db
+    .select({ phone: users.phone })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user?.phone) return false;
+
+  const normalize = (p: string) => p.replace(/\D/g, "");
+  const normalizedUserPhone = normalize(user.phone);
+
+  const validOwners = [
+    ownerPhone ? normalize(ownerPhone) : null,
+    ownerLid ? normalize(ownerLid) : null,
+  ].filter(Boolean) as string[];
+
+  return validOwners.includes(normalizedUserPhone);
 }

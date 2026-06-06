@@ -12,6 +12,9 @@ async function bootstrap() {
     logger: false,
   });
 
+  // Graceful shutdown — prevents data corruption on container stop
+  app.enableShutdownHooks();
+
   await app.init();
 
   logger.info("⚙️  Worker is running and listening for jobs...");

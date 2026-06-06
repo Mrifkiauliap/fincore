@@ -578,6 +578,20 @@ export default function SystemLogsPage() {
             Monitor aktivitas pemrosesan pesan dan AI pipeline
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <a href="/dashboard/system/analytics">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </Button>
+          </a>
+          <a href="/dashboard/system/health">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              Health
+            </Button>
+          </a>
+        </div>
       </div>
 
       {/* Stats Cards */}

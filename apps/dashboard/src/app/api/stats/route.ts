@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, transactions } from "@fincore/db";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -9,12 +10,14 @@ import { NextRequest, NextResponse } from "next/server";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+/** Timezone default global */
+const TZ = "Asia/Jakarta";
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
-    const tz = user.timezone ?? undefined;
 
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
@@ -68,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     // Monthly trend (last 6 months)
     const sixMonthsAgo = dayjs()
-      .tz(tz)
+      .tz(TZ)
       .subtract(6, "month")
       .startOf("month")
       .toDate();
@@ -120,7 +123,10 @@ export async function GET(request: NextRequest) {
       recentTransactions,
     });
   } catch (error) {
-    console.error("GET /api/stats error:", error);
+    logger.error(
+      { route: "GET /api/stats", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengambil statistik" },
       { status: 500 },
