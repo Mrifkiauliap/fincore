@@ -763,7 +763,7 @@ export default async function DashboardPage({
                           : tx.type === "expense"
                             ? "−"
                             : "↔"}{" "}
-                        {formatCurrency(tx.amount, tx.currency || "IDR")}
+                        {formatCurrency(tx.amount, "IDR")}
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {dayjs(tx.transactionDate).format("DD/MM")}

@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { budgets, getDb, transactions } from "@fincore/db";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
@@ -14,8 +15,7 @@ export async function GET(request: NextRequest) {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
-    const tz = user.timezone ?? undefined;
-    const now = dayjs().tz(tz);
+    const now = dayjs().tz("Asia/Jakarta");
     const year = parseInt(searchParams.get("year") || String(now.year()));
     const month = parseInt(
       searchParams.get("month") || String(now.month() + 1),
@@ -36,13 +36,13 @@ export async function GET(request: NextRequest) {
 
     // Calculate actual spending per budget
     const startOfMonth = dayjs()
-      .tz(tz)
+      .tz("Asia/Jakarta")
       .year(year)
       .month(month - 1)
       .startOf("month")
       .toDate();
     const endOfMonth = dayjs()
-      .tz(tz)
+      .tz("Asia/Jakarta")
       .year(year)
       .month(month - 1)
       .endOf("month")
@@ -80,7 +80,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: budgetWithUsage });
   } catch (error) {
-    console.error("GET /api/budgets error:", error);
+    logger.error(
+      { route: "GET /api/budgets", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengambil budget" },
       { status: 500 },

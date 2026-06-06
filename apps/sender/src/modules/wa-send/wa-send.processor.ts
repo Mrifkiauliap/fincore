@@ -1,11 +1,6 @@
 import { WaSendService } from "@/modules/wa-send/wa-send.service";
 import { createLogger } from "@fincore/logger";
-import {
-  createValkeyConnection,
-  Job,
-  Worker,
-  WorkerOptions,
-} from "@fincore/queue";
+import { getSharedValkey, Job, Worker, WorkerOptions } from "@fincore/queue";
 import { JobName, QueueName } from "@fincore/shared";
 import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 
@@ -41,7 +36,7 @@ export class WaSendProcessor implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const opts: WorkerOptions = {
-      connection: createValkeyConnection(),
+      connection: getSharedValkey(),
       concurrency: 5,
     };
 

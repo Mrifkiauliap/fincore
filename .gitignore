@@ -43,3 +43,9 @@ coverage/
 
 # File
 uploads
+
+# Backup File & Documentations
+*.bak
+.devstats/
+task[0-9]*.md
+[0-9]*-*.md

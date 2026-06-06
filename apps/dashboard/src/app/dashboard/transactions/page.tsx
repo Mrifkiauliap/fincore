@@ -158,7 +158,7 @@ const columns: ColumnDef<Transaction>[] = [
         <div className="flex items-center justify-end gap-1">
           <Icon className={`h-3.5 w-3.5 ${color}`} />
           <span className={`font-semibold tabular-nums ${color}`}>
-            {sign} {formatCurrency(tx.amount, tx.currency)}
+            {sign} {formatCurrency(tx.amount, "IDR")}
           </span>
         </div>
       );

@@ -27,7 +27,6 @@ export const budgets = pgTable(
       .notNull()
       .references(() => transactionCategories.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
-    currency: text("currency").default("IDR").notNull(),
     month: integer("month").notNull(),
     year: integer("year").notNull(),
     isActive: boolean("is_active").default(true).notNull(),

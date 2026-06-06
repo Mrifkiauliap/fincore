@@ -1,11 +1,11 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   getDb,
   transactions,
   transactionTagMappings,
   transactionTags,
 } from "@fincore/db";
-import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -14,6 +14,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+/** Timezone default global */
+const TZ = "Asia/Jakarta";
 
 export async function GET(
   _request: NextRequest,
@@ -67,7 +70,6 @@ export async function PATCH(
     const user = await getCurrentUser();
     const { id } = await params;
     const db = getDb();
-    const tz = user.timezone ?? DEFAULT_TIMEZONE;
     const body = await request.json();
 
     const existing = await db.query.transactions.findFirst({
@@ -96,11 +98,10 @@ export async function PATCH(
     if (body.location !== undefined)
       updateData.location = body.location || null;
     if (body.notes !== undefined) updateData.notes = body.notes || null;
-    if (body.currency !== undefined) updateData.currency = body.currency;
     if (body.isConfirmed !== undefined)
       updateData.isConfirmed = body.isConfirmed;
     if (body.transactionDate !== undefined) {
-      updateData.transactionDate = dayjs(body.transactionDate).tz(tz).toDate();
+      updateData.transactionDate = dayjs(body.transactionDate).tz(TZ).toDate();
     }
 
     if (body.amount !== undefined || body.fee !== undefined) {
@@ -183,7 +184,10 @@ export async function PATCH(
 
     return NextResponse.json({ data: updated });
   } catch (error) {
-    console.error("PATCH /api/transactions/[id] error:", error);
+    logger.error(
+      { route: "PATCH /api/transactions/[id]", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengupdate transaksi" },
       { status: 500 },
@@ -216,7 +220,10 @@ export async function DELETE(
 
     return NextResponse.json({ data: deleted });
   } catch (error) {
-    console.error("DELETE /api/transactions/[id] error:", error);
+    logger.error(
+      { route: "DELETE /api/transactions/[id]", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal menghapus transaksi" },
       { status: 500 },

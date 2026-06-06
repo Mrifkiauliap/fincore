@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import { getDb, users } from "@fincore/db";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -16,8 +17,6 @@ export async function GET() {
         id: user.id,
         name: user.name,
         phone: user.phone,
-        timezone: user.timezone,
-        preferredCurrency: user.preferredCurrency,
         reportSchedule: user.reportSchedule,
         reportTime: user.reportTime,
         onboardedAt: user.onboardedAt,
@@ -53,19 +52,6 @@ export async function PATCH(request: NextRequest) {
         if (typeof val !== "string") return "Nama harus berupa teks";
         if (val.length < 1) return "Nama tidak boleh kosong";
         if (val.length > 100) return "Nama maksimal 100 karakter";
-        return null;
-      },
-      timezone: (val) => {
-        const valid = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "UTC"];
-        if (typeof val !== "string" || !valid.includes(val)) {
-          return "Timezone tidak valid. Pilih: Asia/Jakarta, Asia/Makassar, Asia/Jayapura, UTC";
-        }
-        return null;
-      },
-      preferredCurrency: (val) => {
-        if (typeof val !== "string" || val.length < 3 || val.length > 10) {
-          return "Mata uang tidak valid";
-        }
         return null;
       },
       reportSchedule: (val) => {
@@ -113,15 +99,16 @@ export async function PATCH(request: NextRequest) {
       .returning({
         id: users.id,
         name: users.name,
-        timezone: users.timezone,
-        preferredCurrency: users.preferredCurrency,
         reportSchedule: users.reportSchedule,
         reportTime: users.reportTime,
       });
 
     return NextResponse.json({ data: updated });
   } catch (err) {
-    console.error("PATCH /api/settings error:", err);
+    logger.error(
+      { route: "PATCH /api/settings", err: String(err) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal menyimpan pengaturan" },
       { status: 500 },

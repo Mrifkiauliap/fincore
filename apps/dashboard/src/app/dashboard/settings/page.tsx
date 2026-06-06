@@ -44,8 +44,6 @@ type UserProfile = {
   id: string;
   name: string | null;
   phone: string;
-  timezone: string | null;
-  preferredCurrency: string | null;
   reportSchedule: string | null;
   reportTime: string | null;
   onboardedAt: string | null;
@@ -62,24 +60,6 @@ type SessionEntry = {
 };
 
 // ─── Timezone options ────────────────────────────────────────────────
-const TIMEZONE_OPTIONS = [
-  { value: "Asia/Jakarta", label: "WIB — Jakarta (GMT+7)" },
-  { value: "Asia/Makassar", label: "WITA — Makassar (GMT+8)" },
-  { value: "Asia/Jayapura", label: "WIT — Jayapura (GMT+9)" },
-  { value: "UTC", label: "UTC" },
-];
-
-const CURRENCY_OPTIONS = [
-  "IDR",
-  "USD",
-  "SGD",
-  "MYR",
-  "EUR",
-  "GBP",
-  "JPY",
-  "AUD",
-];
-
 const REPORT_SCHEDULE_OPTIONS = [
   { value: "daily", label: "Harian" },
   { value: "weekly", label: "Mingguan" },
@@ -179,8 +159,6 @@ export default function SettingsPage() {
 
   // Form values
   const [editName, setEditName] = useState("");
-  const [editTimezone, setEditTimezone] = useState("");
-  const [editCurrency, setEditCurrency] = useState("");
   const [editSchedule, setEditSchedule] = useState("");
   const [editTime, setEditTime] = useState("");
 
@@ -218,12 +196,6 @@ export default function SettingsPage() {
       case "name":
         setEditName(profile.name ?? "");
         break;
-      case "timezone":
-        setEditTimezone(profile.timezone ?? "Asia/Jakarta");
-        break;
-      case "preferredCurrency":
-        setEditCurrency(profile.preferredCurrency ?? "IDR");
-        break;
       case "reportSchedule":
         setEditSchedule(profile.reportSchedule ?? "monthly");
         break;
@@ -245,12 +217,6 @@ export default function SettingsPage() {
       switch (field) {
         case "name":
           body = { name: editName };
-          break;
-        case "timezone":
-          body = { timezone: editTimezone };
-          break;
-        case "preferredCurrency":
-          body = { preferredCurrency: editCurrency };
           break;
         case "reportSchedule":
           body = { reportSchedule: editSchedule };
@@ -317,13 +283,6 @@ export default function SettingsPage() {
     REPORT_SCHEDULE_OPTIONS.find(
       (o) => o.value === (profile?.reportSchedule ?? "monthly"),
     )?.label ?? "Bulanan";
-
-  const tzLabel =
-    TIMEZONE_OPTIONS.find(
-      (o) => o.value === (profile?.timezone ?? "Asia/Jakarta"),
-    )?.label ??
-    profile?.timezone ??
-    "Asia/Jakarta";
 
   if (loading) {
     return (
@@ -395,62 +354,26 @@ export default function SettingsPage() {
             </span>
           </div>
 
-          {/* Timezone — editable */}
-          <EditableField
-            label="Zona Waktu"
-            value={profile.timezone ?? "Asia/Jakarta"}
-            displayValue={tzLabel}
-            isEditing={editingField === "timezone"}
-            onEdit={() => startEditing("timezone")}
-            onCancel={cancelEditing}
-            onSave={() => saveField("timezone")}
-            saving={saving}
-            icon={Globe}
-          >
-            <Select
-              value={editTimezone}
-              onValueChange={(val) => val && setEditTimezone(val)}
-            >
-              <SelectTrigger className="h-8 w-[240px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEZONE_OPTIONS.map((tz) => (
-                  <SelectItem key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </EditableField>
+          {/* Timezone & Currency — fixed, read-only */}
+          <div className="flex items-center justify-between gap-3 py-1.5 group">
+            <div className="flex items-center gap-2 min-w-0">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground shrink-0">
+                Zona Waktu
+              </p>
+            </div>
+            <span className="font-medium text-sm">Asia/Jakarta (WIB)</span>
+          </div>
 
-          {/* Currency — editable */}
-          <EditableField
-            label="Mata Uang"
-            value={profile.preferredCurrency ?? "IDR"}
-            isEditing={editingField === "preferredCurrency"}
-            onEdit={() => startEditing("preferredCurrency")}
-            onCancel={cancelEditing}
-            onSave={() => saveField("preferredCurrency")}
-            saving={saving}
-            icon={Wallet}
-          >
-            <Select
-              value={editCurrency}
-              onValueChange={(val) => val && setEditCurrency(val)}
-            >
-              <SelectTrigger className="h-8 w-[120px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCY_OPTIONS.map((cur) => (
-                  <SelectItem key={cur} value={cur}>
-                    {cur}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </EditableField>
+          <div className="flex items-center justify-between gap-3 py-1.5 group">
+            <div className="flex items-center gap-2 min-w-0">
+              <Wallet className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-sm text-muted-foreground shrink-0">
+                Mata Uang
+              </p>
+            </div>
+            <span className="font-medium text-sm">IDR</span>
+          </div>
         </CardContent>
       </Card>
 

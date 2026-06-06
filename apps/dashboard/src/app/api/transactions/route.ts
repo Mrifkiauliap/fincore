@@ -1,11 +1,11 @@
 import { getCurrentUser } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   getDb,
   transactions,
   transactionTagMappings,
   transactionTags,
 } from "@fincore/db";
-import { DEFAULT_TIMEZONE } from "@fincore/utils";
 import dayjs from "dayjs";
 import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
@@ -15,12 +15,15 @@ import { NextRequest, NextResponse } from "next/server";
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+/** Timezone & currency default global FinCore */
+const TZ = "Asia/Jakarta";
+const DEFAULT_CURRENCY = "IDR";
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     const db = getDb();
     const { searchParams } = request.nextUrl;
-    const tz = user.timezone ?? DEFAULT_TIMEZONE;
 
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
@@ -108,7 +111,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("GET /api/transactions error:", error);
+    logger.error(
+      { route: "GET /api/transactions", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal mengambil data transaksi" },
       { status: 500 },
@@ -121,14 +127,12 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser();
     const db = getDb();
     const body = await request.json();
-    const tz = user.timezone ?? DEFAULT_TIMEZONE;
 
     const {
       name,
       type,
       amount,
       fee = 0,
-      currency = "IDR",
       categoryId,
       paymentMethodId,
       toPaymentMethodId,
@@ -169,7 +173,6 @@ export async function POST(request: NextRequest) {
         amount: numAmount.toFixed(2),
         fee: numFee.toFixed(2),
         totalAmount: totalAmount.toFixed(2),
-        currency: currency || "IDR",
         categoryId: categoryId || null,
         paymentMethodId: paymentMethodId || null,
         toPaymentMethodId: toPaymentMethodId || null,
@@ -178,7 +181,7 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         transactionDate: transactionDate
           ? new Date(transactionDate)
-          : dayjs().tz(tz).toDate(),
+          : dayjs().tz(TZ).toDate(),
         sourceType,
         isConfirmed,
       })
@@ -221,7 +224,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: newTransaction }, { status: 201 });
   } catch (error) {
-    console.error("POST /api/transactions error:", error);
+    logger.error(
+      { route: "POST /api/transactions", err: String(error) },
+      "Request failed",
+    );
     return NextResponse.json(
       { error: "Gagal membuat transaksi" },
       { status: 500 },
