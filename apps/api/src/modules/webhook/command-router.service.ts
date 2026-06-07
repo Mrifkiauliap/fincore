@@ -1,6 +1,5 @@
 import { AuthService } from "@/modules/auth/auth.service";
 import { WahaMessagePayload } from "@/modules/webhook/waha-payload.dto";
-import { MessageIntent } from "@fincore/ai";
 import getConfig from "@fincore/config";
 import { createLogger } from "@fincore/logger";
 import { enqueue, sendWaMessage } from "@fincore/queue";
@@ -197,6 +196,20 @@ export class CommandRouterService {
       lowerBody.startsWith(p + "help")
     ) {
       await sendWaMessage(msg.from, greetingReply, msg.id);
+      return { routed: true };
+    }
+
+    // ── /ulangi, /retry, /proses ulang ───────────────────────────────────
+    if (
+      lowerBody === p + "ulangi" ||
+      lowerBody === p + "retry" ||
+      lowerBody === p + "proses ulang"
+    ) {
+      await sendWaMessage(
+        msg.from,
+        "🔄 Untuk memproses ulang pesan yang gagal, *balas* (reply) pesan tersebut dengan kata *ulangi*.\n\nJangan kirim sebagai pesan baru ya! 🙏",
+        msg.id,
+      );
       return { routed: true };
     }
 
