@@ -122,6 +122,12 @@ importers:
       "@fincore/db":
         specifier: workspace:*
         version: link:../../packages/db
+      "@fincore/queue":
+        specifier: workspace:*
+        version: link:../../packages/queue
+      "@fincore/shared":
+        specifier: workspace:*
+        version: link:../../packages/shared
       "@fincore/utils":
         specifier: workspace:*
         version: link:../../packages/utils

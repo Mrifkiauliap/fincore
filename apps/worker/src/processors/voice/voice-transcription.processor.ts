@@ -1,3 +1,4 @@
+import { CircuitBreaker } from "@/lib/circuit-breaker";
 import { downloadMedia } from "@/lib/media-downloader";
 import { BaseProcessor } from "@/processors/base.processor";
 import { FinanceGuardrail, GroqWhisperProvider } from "@fincore/ai";
@@ -7,7 +8,7 @@ import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { StorageProvider } from "@fincore/storage";
 import { Injectable } from "@nestjs/common";
-import { Job } from "bullmq";
+import { Job, WorkerOptions } from "bullmq";
 import { eq } from "drizzle-orm";
 
 const MB = 1024 * 1024;
@@ -23,6 +24,17 @@ interface VoiceTranscriptionJobData {
   caption?: string | null;
 }
 
+/**
+ * Circuit breaker for Groq Whisper.
+ * Opens after 5 consecutive failures, cooldown 60 seconds.
+ * While open, requests fail fast and rely on re-analyze flow.
+ */
+const groqCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  cooldownMs: 60_000,
+  name: "groq-whisper",
+});
+
 @Injectable()
 export class VoiceTranscriptionProcessor extends BaseProcessor {
   readonly queueName = QueueName.VOICE_TRANSCRIPTION;
@@ -32,6 +44,18 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
 
   constructor() {
     super("processor:voice-transcription");
+  }
+
+  /** Custom retry backoff: 5s initial, exponential, max 60s */
+  protected workerOptions(): Partial<WorkerOptions> {
+    return {
+      settings: {
+        backoffStrategy: (attemptsMade: number) => {
+          // 5s → 10s → 20s → 40s → 60s (cap)
+          return Math.min(5000 * Math.pow(2, attemptsMade), 60_000);
+        },
+      },
+    };
   }
 
   async process(job: Job<VoiceTranscriptionJobData>): Promise<void> {
@@ -89,36 +113,101 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
       .set({ storagePath, mediaSize: fileSizeBytes })
       .where(eq(rawMessages.id, data.rawMessageId));
 
-    // ── 2. Transcribe via Groq Whisper ──────────────────────────────────────
+    // ── 2. Transcribe via Groq Whisper (with circuit breaker) ────────────
     const startTime = Date.now();
+    let transcriptResult: { transcript: string; provider: string } | null =
+      null;
+
+    // Determine current attempt (0-indexed in BullMQ)
+    const attemptsMade = (job as any).attemptsMade ?? 0;
+    const maxAttempts = (job.opts as any)?.attempts ?? 3;
+    const isFinalAttempt = attemptsMade >= maxAttempts - 1;
+
     try {
-      const result = await this.whisper.transcribeVoice(
-        audioBuffer,
-        data.mediaMimetype,
-      );
+      // Notify user on retry
+      if (attemptsMade === 1) {
+        sendWaMessage(
+          data.from,
+          `⏳ Transkripsi suara masih diproses ulang... (percobaan ke-${attemptsMade + 1}/${maxAttempts}). Mohon tunggu sebentar ya! 🙏`,
+        ).catch(() => {});
+      }
+
+      // ── Primary: Groq Whisper (with circuit breaker) ──────────────────
+      const isCircuitOpen = groqCircuitBreaker.isOpen;
+      if (isCircuitOpen) {
+        logger.warn(
+          { rawMessageId: data.rawMessageId },
+          "Groq circuit breaker OPEN — will fail on final attempt",
+        );
+      } else {
+        try {
+          const result = await groqCircuitBreaker.execute(() =>
+            this.whisper.transcribeVoice(audioBuffer, data.mediaMimetype),
+          );
+          transcriptResult = {
+            transcript: result.transcript,
+            provider: result.provider,
+          };
+        } catch (groqError: any) {
+          logger.warn(
+            { rawMessageId: data.rawMessageId, err: groqError?.message },
+            "Groq Whisper failed",
+          );
+        }
+      }
+
+      // ── Both failed → mark as permanently failed ─────────────────────
+      if (!transcriptResult) {
+        const durationMs = Date.now() - startTime;
+        const errorMsg =
+          "Voice transcription failed: Groq Whisper exhausted all retries";
+
+        await db.insert(aiProcessingLogs).values({
+          rawMessageId: data.rawMessageId,
+          step: "transcription",
+          status: "failed",
+          provider: "groq",
+          durationMs,
+          inputSnapshot: { storagePath },
+          error: errorMsg,
+        });
+
+        await db
+          .update(rawMessages)
+          .set({
+            processingStatus: "failed",
+            processingError: errorMsg,
+            processedAt: new Date(),
+          })
+          .where(eq(rawMessages.id, data.rawMessageId));
+
+        logger.error({ rawMessageId: data.rawMessageId, durationMs }, errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      // ── Transcription succeeded ──────────────────────────────────────
       const durationMs = Date.now() - startTime;
 
       await db.insert(aiProcessingLogs).values({
         rawMessageId: data.rawMessageId,
         step: "transcription",
         status: "done",
-        provider: "groq",
+        provider: transcriptResult.provider,
         durationMs,
         inputSnapshot: { storagePath },
-        outputSnapshot: { transcript: result.transcript },
+        outputSnapshot: { transcript: transcriptResult.transcript },
       });
 
       logger.info(
         {
           rawMessageId: data.rawMessageId,
-          transcriptLength: result.transcript.length,
-          language: result.language,
+          transcriptLength: transcriptResult.transcript.length,
           durationMs,
         },
         "Voice transcription complete",
       );
 
-      if (!result.transcript.trim()) {
+      if (!transcriptResult.transcript.trim()) {
         logger.warn(
           { rawMessageId: data.rawMessageId },
           "Empty transcript, skipping AI extraction",
@@ -130,10 +219,33 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         return;
       }
 
-      // ── 3. Guardrail Check ──────────────────────────────────────────────────
-      const fullContent = data.caption?.trim()
-        ? `${result.transcript}\n[Catatan user: ${data.caption}]`
-        : result.transcript;
+      // ── 3. Deferred Processing: VN without caption → wait for context ──
+      const hasCaption = data.caption?.trim();
+      if (!hasCaption) {
+        logger.info(
+          { rawMessageId: data.rawMessageId },
+          "Voice note without caption — deferring to pending_confirmation",
+        );
+
+        await db
+          .update(rawMessages)
+          .set({
+            processingStatus: "pending_confirmation",
+            body: transcriptResult.transcript,
+            processedAt: null,
+          })
+          .where(eq(rawMessages.id, data.rawMessageId));
+
+        await sendWaMessage(
+          data.from,
+          `🎤 Transkripsi suara:\n\n"${transcriptResult.transcript}"\n\n📝 Balas pesan ini dengan konteks, contoh:\n//catat pake bank jago #utility #server`,
+        );
+
+        return;
+      }
+
+      // ── 4. Guardrail Check (only for VN with caption / re-processed) ──
+      const fullContent = `${transcriptResult.transcript}\n[Catatan user: ${data.caption}]`;
 
       const guardrail = new FinanceGuardrail();
       const intentResult = await guardrail.detectIntent(fullContent);
@@ -159,7 +271,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         return;
       }
 
-      // ── 4. Enqueue transcript for AI extraction ─────────────────────────────
+      // ── 5. Enqueue transcript for AI extraction ─────────────────────────
       await enqueue(QueueName.AI_EXTRACTION, JobName.EXTRACT_TRANSACTION, {
         rawMessageId: data.rawMessageId,
         userId: data.userId,
@@ -178,7 +290,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         rawMessageId: data.rawMessageId,
         step: "transcription",
         status: "failed",
-        provider: "groq",
+        provider: "system",
         durationMs,
         inputSnapshot: { storagePath },
         error: err?.message || String(err),

@@ -12,6 +12,8 @@
     "@base-ui/react": "^1.5.0",
     "@fincore/config": "workspace:*",
     "@fincore/db": "workspace:*",
+    "@fincore/queue": "workspace:*",
+    "@fincore/shared": "workspace:*",
     "@fincore/utils": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",

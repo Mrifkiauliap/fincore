@@ -1,7 +1,8 @@
+import { FinanceGuardrail } from "@fincore/ai";
 import { BaseProcessor } from "@/processors/base.processor";
 import { getDb, rawMessages, trackEvent, users } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
-import { enqueue } from "@fincore/queue";
+import { enqueue, sendWaMessage } from "@fincore/queue";
 import { JobName, MessageType, QueueName } from "@fincore/shared";
 import { Injectable } from "@nestjs/common";
 import { Job } from "bullmq";
@@ -172,6 +173,222 @@ export class IncomingMessageProcessor extends BaseProcessor {
                 .where(eq(rawMessages.waMessageId, replyToId))
                 .limit(1);
 
+              // ── Deferred VN: reply with context to pending_confirmation ──
+              if (
+                quotedMsg &&
+                quotedMsg.type === MessageType.VOICE &&
+                quotedMsg.processingStatus === "pending_confirmation" &&
+                data.body?.trim()
+              ) {
+                const replyLower = data.body.trim().toLowerCase();
+                const reanalyzeKws = ["ulangi", "proses ulang", "retry"];
+
+                if (reanalyzeKws.some((kw) => replyLower === kw)) {
+                  // User wants to re-transcribe the pending VN
+                  logger.info(
+                    { replyToId, rawMessageId: quotedMsg.id },
+                    "Re-analyze requested for pending_confirmation VN",
+                  );
+                  await db
+                    .update(rawMessages)
+                    .set({
+                      processingStatus: "processing",
+                      processingError: null,
+                      processedAt: null,
+                    })
+                    .where(eq(rawMessages.id, quotedMsg.id));
+
+                  await enqueue(
+                    QueueName.VOICE_TRANSCRIPTION,
+                    JobName.TRANSCRIBE_VOICE,
+                    {
+                      rawMessageId: quotedMsg.id,
+                      userId: quotedMsg.userId ?? user.id,
+                      from: quotedMsg.from,
+                      mediaUrl: quotedMsg.mediaUrl,
+                      mediaMimetype:
+                        quotedMsg.mediaMimetype ?? "audio/ogg; codecs=opus",
+                      caption: quotedMsg.body ?? null,
+                    },
+                  );
+
+                  sendWaMessage(
+                    data.from,
+                    "🔄 Memproses ulang pesan suara ini...",
+                    replyToId,
+                  ).catch(() => {});
+                  return;
+                }
+
+                // User provided context → merge transcript + context → AI extract
+                const transcript = quotedMsg.body ?? "";
+                const fullContent = `${transcript}\n[Catatan user: ${data.body}]`;
+
+                logger.info(
+                  { replyToId, rawMessageId: quotedMsg.id },
+                  "Merging deferred VN transcript with user context",
+                );
+
+                await db
+                  .update(rawMessages)
+                  .set({ processingStatus: "processing", body: fullContent })
+                  .where(eq(rawMessages.id, quotedMsg.id));
+
+                // Guardrail check with merged content
+                const guardrail = new FinanceGuardrail();
+                const intentResult = await guardrail.detectIntent(fullContent);
+
+                if (!guardrail.isAllowed(intentResult.intent)) {
+                  await db
+                    .update(rawMessages)
+                    .set({
+                      processingStatus: "failed",
+                      processingError: "Out of scope voice note",
+                    })
+                    .where(eq(rawMessages.id, quotedMsg.id));
+
+                  sendWaMessage(
+                    data.from,
+                    guardrail.getOutOfScopeReply(),
+                    replyToId,
+                  ).catch(() => {});
+                  return;
+                }
+
+                // Enqueue AI extraction directly (skip re-transcription!)
+                await enqueue(
+                  QueueName.AI_EXTRACTION,
+                  JobName.EXTRACT_TRANSACTION,
+                  {
+                    rawMessageId: quotedMsg.id,
+                    userId: quotedMsg.userId ?? user.id,
+                    from: quotedMsg.from,
+                    sourceType: MessageType.VOICE,
+                    content: fullContent,
+                  },
+                );
+
+                sendWaMessage(
+                  data.from,
+                  "✅ Konteks diterima! Memproses transaksi dari pesan suara...",
+                  replyToId,
+                ).catch(() => {});
+                return;
+              }
+
+              // ── Re-analyze: reply "ulangi" to failed/pending_confirmation ──
+              const reanalyzeKeywords = ["ulangi", "proses ulang", "retry"];
+              const bodyLower = data.body?.trim().toLowerCase() ?? "";
+              const isReanalyze = reanalyzeKeywords.some(
+                (kw) => bodyLower === kw,
+              );
+
+              if (isReanalyze && quotedMsg) {
+                if (
+                  quotedMsg.processingStatus === "failed" ||
+                  quotedMsg.processingStatus === "pending_confirmation"
+                ) {
+                  logger.info(
+                    { replyToId, rawMessageId: quotedMsg.id },
+                    "Re-analyze requested for failed/pending message",
+                  );
+
+                  // Reset status and re-enqueue based on type
+                  if (
+                    quotedMsg.type === MessageType.VOICE &&
+                    quotedMsg.mediaUrl
+                  ) {
+                    await db
+                      .update(rawMessages)
+                      .set({
+                        processingStatus: "processing",
+                        processingError: null,
+                        processedAt: null,
+                      })
+                      .where(eq(rawMessages.id, quotedMsg.id));
+
+                    await enqueue(
+                      QueueName.VOICE_TRANSCRIPTION,
+                      JobName.TRANSCRIBE_VOICE,
+                      {
+                        rawMessageId: quotedMsg.id,
+                        userId: quotedMsg.userId ?? user.id,
+                        from: quotedMsg.from,
+                        mediaUrl: quotedMsg.mediaUrl,
+                        mediaMimetype:
+                          quotedMsg.mediaMimetype ?? "audio/ogg; codecs=opus",
+                        caption: quotedMsg.body ?? null,
+                      },
+                    );
+
+                    sendWaMessage(
+                      data.from,
+                      "🔄 Memproses ulang pesan suara ini...",
+                      replyToId,
+                    ).catch(() => {});
+                    return;
+                  } else if (
+                    (quotedMsg.type === MessageType.IMAGE ||
+                      quotedMsg.type === MessageType.DOCUMENT) &&
+                    quotedMsg.mediaUrl
+                  ) {
+                    await db
+                      .update(rawMessages)
+                      .set({
+                        processingStatus: "processing",
+                        processingError: null,
+                        processedAt: null,
+                      })
+                      .where(eq(rawMessages.id, quotedMsg.id));
+
+                    await enqueue(QueueName.IMAGE_OCR, JobName.OCR_IMAGE, {
+                      rawMessageId: quotedMsg.id,
+                      userId: quotedMsg.userId ?? user.id,
+                      from: quotedMsg.from,
+                      mediaUrl: quotedMsg.mediaUrl,
+                      mediaMimetype:
+                        quotedMsg.mediaMimetype ??
+                        (quotedMsg.mediaUrl?.toLowerCase().endsWith(".pdf")
+                          ? "application/pdf"
+                          : "image/jpeg"),
+                      caption: quotedMsg.body ?? null,
+                    });
+
+                    sendWaMessage(
+                      data.from,
+                      "🔄 Memproses ulang pesan ini...",
+                      replyToId,
+                    ).catch(() => {});
+                    return;
+                  } else {
+                    sendWaMessage(
+                      data.from,
+                      "⚠️ Pesan ini tidak bisa diproses ulang (tipe tidak didukung).",
+                      replyToId,
+                    ).catch(() => {});
+                    return;
+                  }
+                } else {
+                  // Message is not failed/pending_confirmation
+                  const statusText =
+                    quotedMsg.processingStatus === "done"
+                      ? "sudah selesai diproses"
+                      : quotedMsg.processingStatus === "processing"
+                        ? "sedang diproses"
+                        : quotedMsg.processingStatus === "pending"
+                          ? "masih antri"
+                          : `berstatus ${quotedMsg.processingStatus}`;
+
+                  sendWaMessage(
+                    data.from,
+                    `ℹ️ Pesan ini ${statusText}. Tidak perlu diproses ulang.`,
+                    replyToId,
+                  ).catch(() => {});
+                  return;
+                }
+              }
+
+              // ── Normal reply-to: extract quoted media ────────────────
               if (
                 quotedMsg &&
                 (quotedMsg.type === MessageType.VOICE ||

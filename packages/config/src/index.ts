@@ -68,6 +68,7 @@ const envSchema = z
     AI_VISION_MODEL: z.string().default("gemini-2.5-flash"),
     AI_VOICE_MODEL: z.string().default("whisper-large-v3"),
     AI_CLASSIFICATION_MODEL: z.string().default("gemini/gemini-2.0-flash-lite"),
+    AI_OCR_FALLBACK_MODEL: z.string().default("gpt-4.1-nano"),
 
     // Transcription
     GROQ_API_KEY: z.string().optional(),
