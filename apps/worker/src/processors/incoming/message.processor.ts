@@ -1,5 +1,5 @@
-import { FinanceGuardrail } from "@fincore/ai";
 import { BaseProcessor } from "@/processors/base.processor";
+import { FinanceGuardrail } from "@fincore/ai";
 import { getDb, rawMessages, trackEvent, users } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
 import { enqueue, sendWaMessage } from "@fincore/queue";
@@ -27,6 +27,20 @@ interface IncomingMessageJobData {
 }
 
 const inFlightMessages = new Set<string>();
+
+/**
+ * Match re-analyze keywords, stripping common prefixes (//, /, .)
+ * so "//ulangi", "/ulangi", "ulangi" all work.
+ */
+const REANALYZE_RAW = ["ulangi", "proses ulang", "retry"];
+
+function isReanalyze(text: string): boolean {
+  const cleaned = text
+    .replace(/^[./]+\s*/, "")
+    .trim()
+    .toLowerCase();
+  return REANALYZE_RAW.includes(cleaned);
+}
 
 @Injectable()
 export class IncomingMessageProcessor extends BaseProcessor {
@@ -180,10 +194,7 @@ export class IncomingMessageProcessor extends BaseProcessor {
                 quotedMsg.processingStatus === "pending_confirmation" &&
                 data.body?.trim()
               ) {
-                const replyLower = data.body.trim().toLowerCase();
-                const reanalyzeKws = ["ulangi", "proses ulang", "retry"];
-
-                if (reanalyzeKws.some((kw) => replyLower === kw)) {
+                if (isReanalyze(data.body)) {
                   // User wants to re-transcribe the pending VN
                   logger.info(
                     { replyToId, rawMessageId: quotedMsg.id },
@@ -277,13 +288,7 @@ export class IncomingMessageProcessor extends BaseProcessor {
               }
 
               // ── Re-analyze: reply "ulangi" to failed/pending_confirmation ──
-              const reanalyzeKeywords = ["ulangi", "proses ulang", "retry"];
-              const bodyLower = data.body?.trim().toLowerCase() ?? "";
-              const isReanalyze = reanalyzeKeywords.some(
-                (kw) => bodyLower === kw,
-              );
-
-              if (isReanalyze && quotedMsg) {
+              if (isReanalyze(data.body) && quotedMsg) {
                 if (
                   quotedMsg.processingStatus === "failed" ||
                   quotedMsg.processingStatus === "pending_confirmation"

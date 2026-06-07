@@ -1,6 +1,6 @@
-import { downloadMedia } from "@/lib/media-downloader";
-import { BaseProcessor } from "@/processors/base.processor";
 import { CircuitBreaker } from "@/lib/circuit-breaker";
+import { downloadMedia, readMediaFromStorage } from "@/lib/media-downloader";
+import { BaseProcessor } from "@/processors/base.processor";
 import { GeminiVisionProvider, SumopodVisionProvider } from "@fincore/ai";
 import { aiProcessingLogs, getDb, rawMessages } from "@fincore/db";
 import { createLogger } from "@fincore/logger";
@@ -76,18 +76,46 @@ export class ImageOcrProcessor extends BaseProcessor {
       return;
     }
 
-    // ── 1. Download ──────────────────────────────────────────────────
-    logger.info(
-      { rawMessageId: data.rawMessageId, mediaUrl: data.mediaUrl },
-      "Downloading image from WAHA",
-    );
+    // ── 1. Get media (local cache or WAHA download) ──────────────────
+    const [existingMsg] = await db
+      .select({ storagePath: rawMessages.storagePath })
+      .from(rawMessages)
+      .where(eq(rawMessages.id, data.rawMessageId))
+      .limit(1);
 
-    const imageBuffer = await downloadMedia(data.mediaUrl);
+    let imageBuffer: Buffer;
+
+    if (existingMsg?.storagePath) {
+      const cached = await readMediaFromStorage(existingMsg.storagePath);
+      if (cached) {
+        logger.info(
+          {
+            rawMessageId: data.rawMessageId,
+            storagePath: existingMsg.storagePath,
+          },
+          "Reading image from local storage (retry)",
+        );
+        imageBuffer = cached;
+      } else {
+        logger.info(
+          { rawMessageId: data.rawMessageId, mediaUrl: data.mediaUrl },
+          "Local file missing, downloading from WAHA",
+        );
+        imageBuffer = await downloadMedia(data.mediaUrl);
+      }
+    } else {
+      logger.info(
+        { rawMessageId: data.rawMessageId, mediaUrl: data.mediaUrl },
+        "Downloading image from WAHA",
+      );
+      imageBuffer = await downloadMedia(data.mediaUrl);
+    }
+
     const fileSizeBytes = imageBuffer.length;
 
     logger.info(
       { rawMessageId: data.rawMessageId, bufferSize: fileSizeBytes },
-      "Image downloaded",
+      "Image ready",
     );
 
     // ── 1.5. File size validation ────────────────────────────────────
@@ -153,16 +181,18 @@ export class ImageOcrProcessor extends BaseProcessor {
       );
     }
 
-    // ── 1.7. Save media ─────────────────────────────────────────────
-    const storagePath = await this.storageProvider.saveMedia(
-      processBuffer,
-      data.mediaMimetype,
-    );
-
-    await db
-      .update(rawMessages)
-      .set({ storagePath, mediaSize: fileSizeBytes })
-      .where(eq(rawMessages.id, data.rawMessageId));
+    // ── 1.7. Save media (if not already cached) ──────────────────────
+    let storagePath = existingMsg?.storagePath ?? null;
+    if (!storagePath) {
+      storagePath = await this.storageProvider.saveMedia(
+        processBuffer,
+        data.mediaMimetype,
+      );
+      await db
+        .update(rawMessages)
+        .set({ storagePath, mediaSize: fileSizeBytes })
+        .where(eq(rawMessages.id, data.rawMessageId));
+    }
 
     // ── 2. OCR: Gemini (primary) with fallback to Sumopod ───────────
     const effectiveMimetype = this.resolveEffectiveMimetype(

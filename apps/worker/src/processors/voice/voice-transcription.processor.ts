@@ -1,5 +1,5 @@
 import { CircuitBreaker } from "@/lib/circuit-breaker";
-import { downloadMedia } from "@/lib/media-downloader";
+import { downloadMedia, readMediaFromStorage } from "@/lib/media-downloader";
 import { BaseProcessor } from "@/processors/base.processor";
 import { FinanceGuardrail, GroqWhisperProvider } from "@fincore/ai";
 import { aiProcessingLogs, getDb, rawMessages } from "@fincore/db";
@@ -70,21 +70,49 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
       return;
     }
 
-    // ── 1. Download audio from WAHA ─────────────────────────────────────────
-    logger.info(
-      { rawMessageId: data.rawMessageId, mediaUrl: data.mediaUrl },
-      "Downloading voice audio from WAHA",
-    );
+    // ── 1. Get audio (local cache or WAHA download) ──────────────────
+    const [existingMsg] = await db
+      .select({ storagePath: rawMessages.storagePath })
+      .from(rawMessages)
+      .where(eq(rawMessages.id, data.rawMessageId))
+      .limit(1);
 
-    const audioBuffer = await downloadMedia(data.mediaUrl);
+    let audioBuffer: Buffer;
+
+    if (existingMsg?.storagePath) {
+      const cached = await readMediaFromStorage(existingMsg.storagePath);
+      if (cached) {
+        logger.info(
+          {
+            rawMessageId: data.rawMessageId,
+            storagePath: existingMsg.storagePath,
+          },
+          "Reading audio from local storage (retry)",
+        );
+        audioBuffer = cached;
+      } else {
+        logger.info(
+          { rawMessageId: data.rawMessageId, mediaUrl: data.mediaUrl },
+          "Local file missing, downloading from WAHA",
+        );
+        audioBuffer = await downloadMedia(data.mediaUrl);
+      }
+    } else {
+      logger.info(
+        { rawMessageId: data.rawMessageId, mediaUrl: data.mediaUrl },
+        "Downloading voice audio from WAHA",
+      );
+      audioBuffer = await downloadMedia(data.mediaUrl);
+    }
+
     const fileSizeBytes = audioBuffer.length;
 
     logger.info(
       { rawMessageId: data.rawMessageId, bufferSize: fileSizeBytes },
-      "Audio downloaded",
+      "Audio ready",
     );
 
-    // ── 1.5. File size validation ───────────────────────────────────────────
+    // ── 1.5. File size validation ───────────────────────────────────────
     if (fileSizeBytes > VOICE_REJECT_THRESHOLD) {
       await db
         .update(rawMessages)
@@ -102,18 +130,20 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
       return;
     }
 
-    // ── 1.6. Save media to local storage ──────────────────────────────────
-    const storagePath = await this.storageProvider.saveMedia(
-      audioBuffer,
-      data.mediaMimetype,
-    );
+    // ── 1.6. Save media to local storage (if not already cached) ────
+    let storagePath = existingMsg?.storagePath ?? null;
+    if (!storagePath) {
+      storagePath = await this.storageProvider.saveMedia(
+        audioBuffer,
+        data.mediaMimetype,
+      );
+      await db
+        .update(rawMessages)
+        .set({ storagePath, mediaSize: fileSizeBytes })
+        .where(eq(rawMessages.id, data.rawMessageId));
+    }
 
-    await db
-      .update(rawMessages)
-      .set({ storagePath, mediaSize: fileSizeBytes })
-      .where(eq(rawMessages.id, data.rawMessageId));
-
-    // ── 2. Transcribe via Groq Whisper (with circuit breaker) ────────────
+    // ── 2. Transcribe via Groq Whisper (with circuit breaker) ────────
     const startTime = Date.now();
     let transcriptResult: { transcript: string; provider: string } | null =
       null;
@@ -132,7 +162,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         ).catch(() => {});
       }
 
-      // ── Primary: Groq Whisper (with circuit breaker) ──────────────────
+      // ── Primary: Groq Whisper (with circuit breaker) ──────────────
       const isCircuitOpen = groqCircuitBreaker.isOpen;
       if (isCircuitOpen) {
         logger.warn(
@@ -156,7 +186,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         }
       }
 
-      // ── Both failed → mark as permanently failed ─────────────────────
+      // ── Both failed → mark as permanently failed ─────────────────
       if (!transcriptResult) {
         const durationMs = Date.now() - startTime;
         const errorMsg =
@@ -185,7 +215,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         throw new Error(errorMsg);
       }
 
-      // ── Transcription succeeded ──────────────────────────────────────
+      // ── Transcription succeeded ──────────────────────────────────
       const durationMs = Date.now() - startTime;
 
       await db.insert(aiProcessingLogs).values({
@@ -271,7 +301,7 @@ export class VoiceTranscriptionProcessor extends BaseProcessor {
         return;
       }
 
-      // ── 5. Enqueue transcript for AI extraction ─────────────────────────
+      // ── 5. Enqueue transcript for AI extraction ─────────────────────
       await enqueue(QueueName.AI_EXTRACTION, JobName.EXTRACT_TRANSACTION, {
         rawMessageId: data.rawMessageId,
         userId: data.userId,
