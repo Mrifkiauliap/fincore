@@ -16,7 +16,7 @@ build/
 
 # Logs
 *.log
-logs/
+/logs/
 pino.log
 
 # OS
