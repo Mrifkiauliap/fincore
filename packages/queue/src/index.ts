@@ -128,5 +128,5 @@ export async function sendWaImage(
 }
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
-export { Queue, QueueEvents, Worker, WorkerOptions } from "bullmq";
-export type { Job, JobsOptions } from "bullmq";
+export { Queue, QueueEvents, Worker } from "bullmq";
+export type { Job, JobsOptions, WorkerOptions } from "bullmq";
