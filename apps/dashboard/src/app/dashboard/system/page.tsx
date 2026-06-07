@@ -50,6 +50,7 @@ import {
   Eye,
   ImageIcon,
   Music,
+  RefreshCw,
   Search,
   Terminal,
   XCircle,
@@ -409,6 +410,7 @@ function MediaPreview({ log }: { log: LogData }) {
 export default function SystemLogsPage() {
   const [logs, setLogs] = useState<LogData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
@@ -506,6 +508,28 @@ export default function SystemLogsPage() {
     fetchLogs();
   }, [fetchLogs]);
 
+  const handleRetry = async (rawMessageId: string) => {
+    setRetrying(rawMessageId);
+    try {
+      const res = await fetch("/api/logs/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawMessageId }),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        await fetchLogs();
+      } else {
+        console.error("Retry failed:", result.error);
+      }
+    } catch (error) {
+      console.error("Retry request failed:", error);
+    } finally {
+      setRetrying(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
@@ -545,6 +569,16 @@ export default function SystemLogsPage() {
             Failed
           </Badge>
         );
+      case "pending_confirmation":
+        return (
+          <Badge
+            variant="outline"
+            className="text-purple-500 border-purple-500/50 bg-purple-500/5 gap-1"
+          >
+            <Clock className="h-3 w-3" />
+            Waiting Context
+          </Badge>
+        );
       case "skipped":
         return (
           <Badge variant="secondary" className="gap-1">
@@ -564,6 +598,11 @@ export default function SystemLogsPage() {
     document: "Document",
     video: "Video",
   };
+
+  const canRetry = (log: LogData) =>
+    (log.processingStatus === "failed" ||
+      log.processingStatus === "pending_confirmation") &&
+    (log.type === "voice" || log.type === "image" || log.type === "document");
 
   return (
     <div className="flex flex-col gap-6 p-4 lg:p-8">
@@ -784,6 +823,9 @@ export default function SystemLogsPage() {
             <SelectItem value="done">✅ Done</SelectItem>
             <SelectItem value="failed">❌ Failed</SelectItem>
             <SelectItem value="skipped">⏭️ Skipped</SelectItem>
+            <SelectItem value="pending_confirmation">
+              ⏸️ Waiting Context
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -806,7 +848,7 @@ export default function SystemLogsPage() {
                 Status
               </TableHead>
               <TableHead className="text-right font-medium text-xs uppercase tracking-wider text-muted-foreground">
-                Detail
+                Aksi
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -887,165 +929,189 @@ export default function SystemLogsPage() {
                   </TableCell>
                   <TableCell>{getStatusBadge(log.processingStatus)}</TableCell>
                   <TableCell className="text-right">
-                    <Dialog>
-                      <DialogTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 gap-1.5 hover:bg-primary/5"
+                    <div className="flex items-center justify-end gap-1">
+                      {canRetry(log) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1 text-amber-500 border-amber-500/50 hover:bg-amber-500/10"
+                          onClick={() => handleRetry(log.id)}
+                          disabled={retrying === log.id}
+                        >
+                          <RefreshCw
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              retrying === log.id && "animate-spin",
+                            )}
                           />
-                        }
-                      >
-                        <Code className="h-4 w-4" />
-                        <span className="hidden sm:inline">JSON</span>
-                      </DialogTrigger>
-                      <DialogContent className="min-w-4xl max-h-[85vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2">
-                            <Terminal className="h-5 w-5 text-primary" />
-                            Detail Log Pemrosesan
-                          </DialogTitle>
-                        </DialogHeader>
-
-                        {/* Tabs for organizing content */}
-                        <Tabs defaultValue="steps" className="pt-2">
-                          <TabsList
-                            variant="line"
-                            className="w-full border-b border-border px-2"
-                          >
-                            <TabsTrigger value="steps" className="gap-1.5">
-                              <Activity className="h-3.5 w-3.5" />
-                              Steps
-                            </TabsTrigger>
-                            <TabsTrigger value="raw" className="gap-1.5">
-                              <Code className="h-3.5 w-3.5" />
-                              Raw Message
-                            </TabsTrigger>
-                            {log.aiOutputs && log.aiOutputs.length > 0 && (
-                              <TabsTrigger value="ai" className="gap-1.5">
-                                <Zap className="h-3.5 w-3.5" />
-                                AI Output ({log.aiOutputs.length})
-                              </TabsTrigger>
-                            )}
-                            {isPreviewableType(log.type) && (
-                              <TabsTrigger value="media" className="gap-1.5">
-                                <Eye className="h-3.5 w-3.5" />
-                                Media
-                              </TabsTrigger>
-                            )}
-                          </TabsList>
-
-                          {/* Steps tab */}
-                          <TabsContent value="steps" className="pt-4">
-                            {log.processingLogs &&
-                            log.processingLogs.length > 0 ? (
-                              <ProcessingTimeline steps={log.processingLogs} />
-                            ) : (
-                              <div className="py-8 text-center text-muted-foreground text-sm">
-                                <Cpu className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                                <p>Tidak ada data pemrosesan AI tersedia</p>
-                              </div>
-                            )}
-                          </TabsContent>
-
-                          {/* Raw Message tab */}
-                          <TabsContent value="raw" className="pt-4 space-y-4">
-                            <JsonBlock
-                              label="Pesan Masuk (Raw Payload)"
-                              data={log.rawPayload}
-                              highlightColor="text-emerald-400"
+                          <span className="hidden sm:inline">Retry</span>
+                        </Button>
+                      )}
+                      <Dialog>
+                        <DialogTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 hover:bg-primary/5"
                             />
-                          </TabsContent>
+                          }
+                        >
+                          <Code className="h-4 w-4" />
+                          <span className="hidden sm:inline">JSON</span>
+                        </DialogTrigger>
+                        <DialogContent className="min-w-4xl max-h-[85vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <Terminal className="h-5 w-5 text-primary" />
+                              Detail Log Pemrosesan
+                            </DialogTitle>
+                          </DialogHeader>
 
-                          {/* AI Outputs tab */}
-                          {log.aiOutputs && log.aiOutputs.length > 0 && (
-                            <TabsContent value="ai" className="pt-4 space-y-4">
-                              {log.aiOutputs.map((ai: any, idx: number) => (
-                                <JsonBlock
-                                  key={`${ai.provider ?? "unknown"}-${ai.model ?? "N/A"}-${idx}`}
-                                  label={`Output AI #${idx + 1} — ${ai.provider ?? "unknown"} / ${ai.model ?? "N/A"}`}
-                                  data={{
-                                    provider: ai.provider,
-                                    model: ai.model,
-                                    prompt_preview: ai.prompt?.substring(
-                                      0,
-                                      200,
-                                    ),
-                                    response_preview: ai.response?.substring(
-                                      0,
-                                      500,
-                                    ),
-                                    parsedOutput: ai.parsedOutput,
-                                    latency: `${ai.latencyMs}ms`,
-                                    tokens: ai.inputTokens
-                                      ? `${ai.inputTokens} → ${ai.outputTokens}`
-                                      : "N/A",
-                                  }}
-                                  highlightColor="text-blue-400"
-                                />
-                              ))}
-                            </TabsContent>
-                          )}
-
-                          {/* Media tab */}
-                          {isPreviewableType(log.type) && (
-                            <TabsContent
-                              value="media"
-                              className="pt-4 space-y-4"
+                          {/* Tabs for organizing content */}
+                          <Tabs defaultValue="steps" className="pt-2">
+                            <TabsList
+                              variant="line"
+                              className="w-full border-b border-border px-2"
                             >
-                              <MediaPreview log={log} />
-                              <div className="text-xs text-muted-foreground space-y-1">
-                                <div className="flex gap-2">
-                                  <span className="font-medium">Type:</span>
-                                  <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
-                                    {log.type}
-                                  </code>
-                                </div>
-                                {log.mediaMimetype && (
-                                  <div className="flex gap-2">
-                                    <span className="font-medium">MIME:</span>
-                                    <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
-                                      {log.mediaMimetype}
-                                    </code>
-                                  </div>
-                                )}
-                                {log.mediaUrl && (
-                                  <div className="flex gap-2">
-                                    <span className="font-medium">
-                                      Original URL:
-                                    </span>
-                                    <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] truncate max-w-[400px]">
-                                      {log.mediaUrl}
-                                    </code>
-                                  </div>
-                                )}
-                                {log.storagePath && (
-                                  <div className="flex gap-2">
-                                    <span className="font-medium">
-                                      Storage:
-                                    </span>
-                                    <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
-                                      {log.storagePath}
-                                    </code>
-                                  </div>
-                                )}
-                              </div>
-                            </TabsContent>
-                          )}
+                              <TabsTrigger value="steps" className="gap-1.5">
+                                <Activity className="h-3.5 w-3.5" />
+                                Steps
+                              </TabsTrigger>
+                              <TabsTrigger value="raw" className="gap-1.5">
+                                <Code className="h-3.5 w-3.5" />
+                                Raw Message
+                              </TabsTrigger>
+                              {log.aiOutputs && log.aiOutputs.length > 0 && (
+                                <TabsTrigger value="ai" className="gap-1.5">
+                                  <Zap className="h-3.5 w-3.5" />
+                                  AI Output ({log.aiOutputs.length})
+                                </TabsTrigger>
+                              )}
+                              {isPreviewableType(log.type) && (
+                                <TabsTrigger value="media" className="gap-1.5">
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Media
+                                </TabsTrigger>
+                              )}
+                            </TabsList>
 
-                          {/* Fallback: no content at all */}
-                          {(!log.aiOutputs || log.aiOutputs.length === 0) &&
-                            (!log.processingLogs ||
-                              log.processingLogs.length === 0) && (
-                              <div className="py-8 text-center text-muted-foreground text-sm">
-                                <Cpu className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                                <p>Tidak ada data pemrosesan AI tersedia</p>
-                              </div>
+                            {/* Steps tab */}
+                            <TabsContent value="steps" className="pt-4">
+                              {log.processingLogs &&
+                              log.processingLogs.length > 0 ? (
+                                <ProcessingTimeline
+                                  steps={log.processingLogs}
+                                />
+                              ) : (
+                                <div className="py-8 text-center text-muted-foreground text-sm">
+                                  <Cpu className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                  <p>Tidak ada data pemrosesan AI tersedia</p>
+                                </div>
+                              )}
+                            </TabsContent>
+
+                            {/* Raw Message tab */}
+                            <TabsContent value="raw" className="pt-4 space-y-4">
+                              <JsonBlock
+                                label="Pesan Masuk (Raw Payload)"
+                                data={log.rawPayload}
+                                highlightColor="text-emerald-400"
+                              />
+                            </TabsContent>
+
+                            {/* AI Outputs tab */}
+                            {log.aiOutputs && log.aiOutputs.length > 0 && (
+                              <TabsContent
+                                value="ai"
+                                className="pt-4 space-y-4"
+                              >
+                                {log.aiOutputs.map((ai: any, idx: number) => (
+                                  <JsonBlock
+                                    key={`${ai.provider ?? "unknown"}-${ai.model ?? "N/A"}-${idx}`}
+                                    label={`Output AI #${idx + 1} — ${ai.provider ?? "unknown"} / ${ai.model ?? "N/A"}`}
+                                    data={{
+                                      provider: ai.provider,
+                                      model: ai.model,
+                                      prompt_preview: ai.prompt?.substring(
+                                        0,
+                                        200,
+                                      ),
+                                      response_preview: ai.response?.substring(
+                                        0,
+                                        500,
+                                      ),
+                                      parsedOutput: ai.parsedOutput,
+                                      latency: `${ai.latencyMs}ms`,
+                                      tokens: ai.inputTokens
+                                        ? `${ai.inputTokens} → ${ai.outputTokens}`
+                                        : "N/A",
+                                    }}
+                                    highlightColor="text-blue-400"
+                                  />
+                                ))}
+                              </TabsContent>
                             )}
-                        </Tabs>
-                      </DialogContent>
-                    </Dialog>
+
+                            {/* Media tab */}
+                            {isPreviewableType(log.type) && (
+                              <TabsContent
+                                value="media"
+                                className="pt-4 space-y-4"
+                              >
+                                <MediaPreview log={log} />
+                                <div className="text-xs text-muted-foreground space-y-1">
+                                  <div className="flex gap-2">
+                                    <span className="font-medium">Type:</span>
+                                    <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
+                                      {log.type}
+                                    </code>
+                                  </div>
+                                  {log.mediaMimetype && (
+                                    <div className="flex gap-2">
+                                      <span className="font-medium">MIME:</span>
+                                      <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
+                                        {log.mediaMimetype}
+                                      </code>
+                                    </div>
+                                  )}
+                                  {log.mediaUrl && (
+                                    <div className="flex gap-2">
+                                      <span className="font-medium">
+                                        Original URL:
+                                      </span>
+                                      <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] truncate max-w-[400px]">
+                                        {log.mediaUrl}
+                                      </code>
+                                    </div>
+                                  )}
+                                  {log.storagePath && (
+                                    <div className="flex gap-2">
+                                      <span className="font-medium">
+                                        Storage:
+                                      </span>
+                                      <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">
+                                        {log.storagePath}
+                                      </code>
+                                    </div>
+                                  )}
+                                </div>
+                              </TabsContent>
+                            )}
+
+                            {/* Fallback: no content at all */}
+                            {(!log.aiOutputs || log.aiOutputs.length === 0) &&
+                              (!log.processingLogs ||
+                                log.processingLogs.length === 0) && (
+                                <div className="py-8 text-center text-muted-foreground text-sm">
+                                  <Cpu className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                  <p>Tidak ada data pemrosesan AI tersedia</p>
+                                </div>
+                              )}
+                          </Tabs>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
